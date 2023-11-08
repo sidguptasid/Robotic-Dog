@@ -514,12 +514,15 @@ class LeggedRobot(BaseTask):
 
         self._create_envs()
 
+    def get_camera_parameters(self, position, lookat):
+        cam_pos = gymapi.Vec3(position[0], position[1], position[2])
+        cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
+        return cam_pos, cam_target
 
     def set_camera(self, position, lookat):
         """ Set camera position and direction
         """
-        cam_pos = gymapi.Vec3(position[0], position[1], position[2])
-        cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
+        cam_pos, cam_target = self.get_camera_parameters(position, lookat)
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target) \
 
     def set_main_agent_pose(self, loc, quat):
@@ -1591,17 +1594,15 @@ class LeggedRobot(BaseTask):
         # if recording video, set up camera
         if self.cfg.env.record_video:
             self.camera_props = gymapi.CameraProperties()
-            self.camera_props.width = 360
-            self.camera_props.height = 240
+            self.camera_props.width = 1080
+            self.camera_props.height = 720
             self.rendering_camera = self.gym.create_camera_sensor(self.envs[0], self.camera_props)
-            self.gym.set_camera_location(self.rendering_camera, self.envs[0], gymapi.Vec3(1.5, 1, 3.0),
-                                         gymapi.Vec3(0, 0, 0))
+            cam_pos, cam_target = self.get_camera_parameters(self.cfg.viewer.pos, self.cfg.viewer.lookat)
+            self.gym.set_camera_location(self.rendering_camera, self.envs[0], cam_pos, cam_target)
             if self.eval_cfg is not None:
                 self.rendering_camera_eval = self.gym.create_camera_sensor(self.envs[self.num_train_envs],
                                                                            self.camera_props)
-                self.gym.set_camera_location(self.rendering_camera_eval, self.envs[self.num_train_envs],
-                                             gymapi.Vec3(1.5, 1, 3.0),
-                                             gymapi.Vec3(0, 0, 0))
+                self.gym.set_camera_location(self.rendering_camera_eval, self.envs[self.num_train_envs], cam_pos, cam_target)
         self.video_writer = None
         self.video_frames = []
         self.video_frames_eval = []
@@ -1611,8 +1612,8 @@ class LeggedRobot(BaseTask):
     def render(self, mode="rgb_array"):
         assert mode == "rgb_array"
         bx, by, bz = self.root_states[0, 0], self.root_states[0, 1], self.root_states[0, 2]
-        self.gym.set_camera_location(self.rendering_camera, self.envs[0], gymapi.Vec3(bx, by - 1.0, bz + 1.0),
-                                     gymapi.Vec3(bx, by, bz))
+        #self.gym.set_camera_location(self.rendering_camera, self.envs[0], gymapi.Vec3(bx, by - 1.0, bz + 1.0),
+        #                             gymapi.Vec3(bx, by, bz))
         self.gym.step_graphics(self.sim)
         self.gym.render_all_camera_sensors(self.sim)
         img = self.gym.get_camera_image(self.sim, self.envs[0], self.rendering_camera, gymapi.IMAGE_COLOR)
@@ -1622,8 +1623,8 @@ class LeggedRobot(BaseTask):
     def _render_headless(self):
         if self.record_now and self.complete_video_frames is not None and len(self.complete_video_frames) == 0:
             bx, by, bz = self.root_states[0, 0], self.root_states[0, 1], self.root_states[0, 2]
-            self.gym.set_camera_location(self.rendering_camera, self.envs[0], gymapi.Vec3(bx, by - 1.0, bz + 1.0),
-                                         gymapi.Vec3(bx, by, bz))
+            #self.gym.set_camera_location(self.rendering_camera, self.envs[0], gymapi.Vec3(bx, by - 1.0, bz + 1.0),
+            #                             gymapi.Vec3(bx, by, bz))
             self.video_frame = self.gym.get_camera_image(self.sim, self.envs[0], self.rendering_camera,
                                                          gymapi.IMAGE_COLOR)
             self.video_frame = self.video_frame.reshape((self.camera_props.height, self.camera_props.width, 4))
@@ -1634,9 +1635,9 @@ class LeggedRobot(BaseTask):
             if self.eval_cfg is not None:
                 bx, by, bz = self.root_states[self.num_train_envs, 0], self.root_states[self.num_train_envs, 1], \
                              self.root_states[self.num_train_envs, 2]
-                self.gym.set_camera_location(self.rendering_camera_eval, self.envs[self.num_train_envs],
-                                             gymapi.Vec3(bx, by - 1.0, bz + 1.0),
-                                             gymapi.Vec3(bx, by, bz))
+                #self.gym.set_camera_location(self.rendering_camera_eval, self.envs[self.num_train_envs],
+                #                             gymapi.Vec3(bx, by - 1.0, bz + 1.0),
+                #                             gymapi.Vec3(bx, by, bz))
                 self.video_frame_eval = self.gym.get_camera_image(self.sim, self.envs[self.num_train_envs],
                                                                   self.rendering_camera_eval,
                                                                   gymapi.IMAGE_COLOR)
