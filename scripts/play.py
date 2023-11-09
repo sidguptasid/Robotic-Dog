@@ -105,8 +105,8 @@ def play_go1(headless=True):
     import glob
     import os
 
-    #label = "gait-conditioned-agility/pretrain-v0/train"
-    label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
+    label = "gait-conditioned-agility/pretrain-v0/train"
+    #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
     #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
     
     env, policy = load_env(label, headless=headless)
