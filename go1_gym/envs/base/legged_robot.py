@@ -1534,6 +1534,7 @@ class LeggedRobot(BaseTask):
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
+        start_pose.r = gymapi.Quat(0, 0, 0, 1)
 
         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
         self.terrain_levels = torch.zeros(self.num_envs, device=self.device, requires_grad=False, dtype=torch.long)
@@ -1582,19 +1583,74 @@ class LeggedRobot(BaseTask):
                 asset_options.disable_gravity = True
                 # create static box asset
                 asset_options.fix_base_link = True
-                asset_box = self.gym.create_box(self.sim, 0.5, 0.1, 0.5, asset_options)
+                asset_box = self.gym.create_box(self.sim, 4, 0.1, 1.0, asset_options)
 
                 pose = gymapi.Transform()
-                pose.p = gymapi.Vec3(0.0, 0.5, 0.0)
+                pose.p = gymapi.Vec3(pos[0]+1.5, pos[1]+1, pos[2])
+                #gymapi.Vec3(pos[0]-1, pos[1], pos[2])
+                #gymapi.Vec3(0.0, 0.5, 0.0)
                 pose.r = gymapi.Quat(0, 0, 0, 1)
                 box_handle = self.gym.create_actor(env_handle1, asset_box, pose, "actor1", i, 0)
-                #self.envs.append(env_handle)
+                self.envs.append(env_handle1)
                 self.actor_handles.append(box_handle)
                 shape_props = self.gym.get_actor_rigid_shape_properties(env_handle1, box_handle)
                 shape_props[0].restitution = 1
                 shape_props[0].compliance = 0.5
                 self.gym.set_actor_rigid_shape_properties(env_handle1, box_handle, shape_props)
 
+                #trying to insert another box --modification
+                #env_handle2 = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(1)))
+                #asset_options.disable_gravity = True
+                # create static box asset
+                #asset_options.fix_base_link = True
+                asset_box2 = self.gym.create_box(self.sim, 4.0, 0.1, 1.0, asset_options)
+
+                pose2 = gymapi.Transform()
+                pose2.p = gymapi.Vec3(pos[0]+1.5, pos[1]-1, pos[2])
+                #gymapi.Vec3(pos[0]-1, pos[1], pos[2])
+                #gymapi.Vec3(0.0, 0.5, 0.0)
+                pose2.r = gymapi.Quat(0, 0, 0, 1)
+                box_handle2 = self.gym.create_actor(env_handle, asset_box2, pose2, "actor2", i, 0)
+                self.envs.append(env_handle)
+                self.actor_handles.append(box_handle2)
+                shape_props2 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle2)
+                shape_props2[0].restitution = 1
+                shape_props2[0].compliance = 0.5
+                self.gym.set_actor_rigid_shape_properties(env_handle, box_handle2, shape_props2)
+
+                #--modification--ends
+
+                asset_box3 = self.gym.create_box(self.sim, 2, 0.1, 1.0, asset_options)
+
+                pose3 = gymapi.Transform()
+                pose3.p = gymapi.Vec3(pos[0]-0.5, pos[1], pos[2])
+                pose3.r = gymapi.Quat(0, 0, 0.707, 0.707)
+                box_handle3 = self.gym.create_actor(env_handle, asset_box3, pose3, "actor3", i, 0)
+                self.envs.append(env_handle)
+                self.actor_handles.append(box_handle3)
+                shape_props3 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle3)
+                shape_props3[0].restitution = 1
+                shape_props3[0].compliance = 0.5
+                self.gym.set_actor_rigid_shape_properties(env_handle, box_handle3, shape_props3)
+
+                #--actor 4 added--
+                asset_box4 = self.gym.create_box(self.sim, 2, 0.1, 1.0, asset_options)
+
+                pose4 = gymapi.Transform()
+                pose4.p = gymapi.Vec3(pos[0]+3, pos[1], pos[2])
+                pose4.r = gymapi.Quat(0, 0, 0.707, 0.707)
+                box_handle4 = self.gym.create_actor(env_handle, asset_box4, pose4, "actor4", i, 0)
+                self.envs.append(env_handle)
+                self.actor_handles.append(box_handle4)
+                shape_props4 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle4)
+                shape_props4[0].restitution = 1
+                shape_props4[0].compliance = 0.5
+                self.gym.set_actor_rigid_shape_properties(env_handle, box_handle4, shape_props4)
+
+                #--actor 4 ends
+
+        print("Actors")
+        print(self.gym.get_sim_actor_count(self.sim))
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0],
