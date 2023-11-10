@@ -1556,7 +1556,7 @@ class LeggedRobot(BaseTask):
         for i in range(self.num_envs):
             # create env instance
             if i==0:
-                env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(1)))
+                env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
                 pos = self.env_origins[i].clone()
                 pos[0:1] += torch_rand_float(-self.cfg.terrain.x_init_range, self.cfg.terrain.x_init_range, (1, 1),
                                                 device=self.device).squeeze(1)
@@ -1575,40 +1575,28 @@ class LeggedRobot(BaseTask):
                 self.gym.set_actor_rigid_body_properties(env_handle, anymal_handle, body_props, recomputeInertia=True)
                 self.envs.append(env_handle)
                 self.actor_handles.append(anymal_handle)
+                #Walls
+                #Wall 1
                 spacing = 1.8
                 env_lower = gymapi.Vec3(-spacing, 0.0, -spacing)
                 env_upper = gymapi.Vec3(spacing, spacing, spacing)
-                env_handle1 = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(1)))
-                #asset_options = gymapi.AssetOptions()
                 asset_options.disable_gravity = True
-                # create static box asset
                 asset_options.fix_base_link = True
-                asset_box = self.gym.create_box(self.sim, 4, 0.1, 1.0, asset_options)
-
+                asset_box = self.gym.create_box(self.sim, 4, 0.2, 1.0, asset_options)
                 pose = gymapi.Transform()
                 pose.p = gymapi.Vec3(pos[0]+1.5, pos[1]+1, pos[2])
-                #gymapi.Vec3(pos[0]-1, pos[1], pos[2])
-                #gymapi.Vec3(0.0, 0.5, 0.0)
                 pose.r = gymapi.Quat(0, 0, 0, 1)
-                box_handle = self.gym.create_actor(env_handle1, asset_box, pose, "actor1", i, 0)
-                self.envs.append(env_handle1)
+                box_handle = self.gym.create_actor(env_handle, asset_box, pose, "actor1", i, 0)
+                self.envs.append(env_handle)
                 self.actor_handles.append(box_handle)
-                shape_props = self.gym.get_actor_rigid_shape_properties(env_handle1, box_handle)
+                shape_props = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle)
                 shape_props[0].restitution = 1
                 shape_props[0].compliance = 0.5
-                self.gym.set_actor_rigid_shape_properties(env_handle1, box_handle, shape_props)
-
-                #trying to insert another box --modification
-                #env_handle2 = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(1)))
-                #asset_options.disable_gravity = True
-                # create static box asset
-                #asset_options.fix_base_link = True
-                asset_box2 = self.gym.create_box(self.sim, 4.0, 0.1, 1.0, asset_options)
-
+                self.gym.set_actor_rigid_shape_properties(env_handle, box_handle, shape_props)
+                #Wall 2
+                asset_box2 = self.gym.create_box(self.sim, 4.0, 0.2, 1.0, asset_options)
                 pose2 = gymapi.Transform()
                 pose2.p = gymapi.Vec3(pos[0]+1.5, pos[1]-1, pos[2])
-                #gymapi.Vec3(pos[0]-1, pos[1], pos[2])
-                #gymapi.Vec3(0.0, 0.5, 0.0)
                 pose2.r = gymapi.Quat(0, 0, 0, 1)
                 box_handle2 = self.gym.create_actor(env_handle, asset_box2, pose2, "actor2", i, 0)
                 self.envs.append(env_handle)
@@ -1617,11 +1605,8 @@ class LeggedRobot(BaseTask):
                 shape_props2[0].restitution = 1
                 shape_props2[0].compliance = 0.5
                 self.gym.set_actor_rigid_shape_properties(env_handle, box_handle2, shape_props2)
-
-                #--modification--ends
-
-                asset_box3 = self.gym.create_box(self.sim, 2, 0.1, 1.0, asset_options)
-
+                #Wall 3
+                asset_box3 = self.gym.create_box(self.sim, 2, 0.2, 1.0, asset_options)
                 pose3 = gymapi.Transform()
                 pose3.p = gymapi.Vec3(pos[0]-0.5, pos[1], pos[2])
                 pose3.r = gymapi.Quat(0, 0, 0.707, 0.707)
@@ -1632,12 +1617,10 @@ class LeggedRobot(BaseTask):
                 shape_props3[0].restitution = 1
                 shape_props3[0].compliance = 0.5
                 self.gym.set_actor_rigid_shape_properties(env_handle, box_handle3, shape_props3)
-
-                #--actor 4 added--
-                asset_box4 = self.gym.create_box(self.sim, 2, 0.1, 1.0, asset_options)
-
+                #Wall 4
+                asset_box4 = self.gym.create_box(self.sim, 2, 0.2, 1.0, asset_options)
                 pose4 = gymapi.Transform()
-                pose4.p = gymapi.Vec3(pos[0]+3, pos[1], pos[2])
+                pose4.p = gymapi.Vec3(pos[0]+3.5, pos[1], pos[2])
                 pose4.r = gymapi.Quat(0, 0, 0.707, 0.707)
                 box_handle4 = self.gym.create_actor(env_handle, asset_box4, pose4, "actor4", i, 0)
                 self.envs.append(env_handle)
