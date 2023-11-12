@@ -259,7 +259,7 @@ class LeggedRobot(BaseTask):
                                                   gymtorch.unwrap_tensor(robot_actor_idxs_int32[env_ids_long]), len(env_ids_long))
 
         # base position
-        self.root_states[env_ids] = base_state.to(self.device)
+        self.root_states[self.robot_actor_idxs[env_ids_long]] = base_state.to(self.device)
 
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
@@ -961,8 +961,7 @@ class LeggedRobot(BaseTask):
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof),
-                                                                        device=self.device)
+        self.dof_pos[env_ids] = self.default_dof_pos
         self.dof_vel[env_ids] = 0.
 
         robot_env_idx = self.robot_actor_idxs.to(dtype=torch.int32, device=self.device)[env_ids]
@@ -1002,12 +1001,12 @@ class LeggedRobot(BaseTask):
         # self.root_states[env_ids, 3:7] = quat
 
         # base velocities
-        self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(robot_env_ids), 6),
-                                                           device=self.device)  # [7:10]: lin vel, [10:13]: ang vel
+        # self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(robot_env_ids), 6),
+        #                                                    device=self.device)  # [7:10]: lin vel, [10:13]: ang vel
         robot_env_ids_int32 = robot_env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
-                                                     gymtorch.unwrap_tensor(robot_env_ids_int32), len(robot_env_ids_int32))
+                                                     gymtorch.unwrap_tensor(robot_env_ids_int32[env_ids]), len(robot_env_ids_int32[env_ids]))
 
         if cfg.env.record_video and 0 in env_ids:
             if self.complete_video_frames is None:
@@ -1589,8 +1588,6 @@ class LeggedRobot(BaseTask):
             pose.p = gymapi.Vec3(pos[0]+1.5, pos[1]+1, pos[2])
             pose.r = gymapi.Quat(0, 0, 0, 1)
             box_handle = self.gym.create_actor(env_handle, asset_box, pose, "actor1", i, 0)
-            self.envs.append(env_handle)
-            self.actor_handles.append(box_handle)
             shape_props = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle)
             shape_props[0].restitution = 1
             shape_props[0].compliance = 0.5
@@ -1601,8 +1598,6 @@ class LeggedRobot(BaseTask):
             pose2.p = gymapi.Vec3(pos[0]+1.5, pos[1]-1, pos[2])
             pose2.r = gymapi.Quat(0, 0, 0, 1)
             box_handle2 = self.gym.create_actor(env_handle, asset_box2, pose2, "actor2", i, 0)
-            self.envs.append(env_handle)
-            self.actor_handles.append(box_handle2)
             shape_props2 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle2)
             shape_props2[0].restitution = 1
             shape_props2[0].compliance = 0.5
@@ -1613,8 +1608,6 @@ class LeggedRobot(BaseTask):
             pose3.p = gymapi.Vec3(pos[0]-0.5, pos[1], pos[2])
             pose3.r = gymapi.Quat(0, 0, 0.707, 0.707)
             box_handle3 = self.gym.create_actor(env_handle, asset_box3, pose3, "actor3", i, 0)
-            self.envs.append(env_handle)
-            self.actor_handles.append(box_handle3)
             shape_props3 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle3)
             shape_props3[0].restitution = 1
             shape_props3[0].compliance = 0.5
@@ -1625,8 +1618,6 @@ class LeggedRobot(BaseTask):
             pose4.p = gymapi.Vec3(pos[0]+3.5, pos[1], pos[2])
             pose4.r = gymapi.Quat(0, 0, 0.707, 0.707)
             box_handle4 = self.gym.create_actor(env_handle, asset_box4, pose4, "actor4", i, 0)
-            self.envs.append(env_handle)
-            self.actor_handles.append(box_handle4)
             shape_props4 = self.gym.get_actor_rigid_shape_properties(env_handle, box_handle4)
             shape_props4[0].restitution = 1
             shape_props4[0].compliance = 0.5
