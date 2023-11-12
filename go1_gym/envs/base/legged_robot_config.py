@@ -199,8 +199,8 @@ class Cfg(PrefixProto, cli=False):
         tracking_contacts_shaped_vel = 0.8
 
     class init_state(PrefixProto, cli=False):
-        pos = [0.0, 0.0, 1.]  # x,y,z [m]
-        rot = [0.0, 0.0, 0.0, 1.0]  # x,y,z,w [quat]
+        pos = [-1.5, 0.0, 1.]  # x,y,z [m]
+        rot = [0.707, 0.0, 0.0, 0.707]  # x,y,z,w [quat]
         lin_vel = [0.0, 0.0, 0.0]  # x,y,z [m/s]
         ang_vel = [0.0, 0.0, 0.0]  # x,y,z [rad/s]
         # target angles when action = 0.0
@@ -242,8 +242,8 @@ class Cfg(PrefixProto, cli=False):
 
     class domain_rand(PrefixProto, cli=False):
         rand_interval_s = 10
-        randomize_rigids_after_start = True
-        randomize_friction = True
+        randomize_rigids_after_start = False
+        randomize_friction = False
         friction_range = [0.5, 1.25]  # increase range
         randomize_restitution = False
         restitution_range = [0, 1.0]
@@ -376,7 +376,7 @@ class Cfg(PrefixProto, cli=False):
         depth_image = 1.0
 
     class noise(PrefixProto, cli=False):
-        add_noise = True
+        add_noise = False
         noise_level = 1.0  # scales other values
 
     class noise_scales(PrefixProto, cli=False):
