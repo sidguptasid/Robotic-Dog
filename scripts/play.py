@@ -84,6 +84,7 @@ def load_env(label, headless=False):
     Cfg.control.control_type = "actuator_net"
 
     Cfg.init_state.pos = [0, -1.5, 1.]
+    #Cfg.init_state.pos = [0, 0, 1.]
     Cfg.init_state.rot = [0,0,0.707,0.707]
 
     from go1_gym.envs.wrappers.history_wrapper import HistoryWrapper

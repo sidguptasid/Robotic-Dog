@@ -1,3 +1,6 @@
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
 def train_go1(headless=True):
 
     import isaacgym

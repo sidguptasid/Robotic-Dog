@@ -977,10 +977,18 @@ class LeggedRobot(BaseTask):
             env_ids (List[int]): Environemnt ids
         """
         robot_env_ids = self.robot_actor_idxs[env_ids].to(device=self.device)
+        isRandomInit = False
         # base position
         if self.custom_origins:
-            self.root_states[robot_env_ids] = self.base_init_state
-            self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
+            if not isRandomInit:
+                self.root_states[robot_env_ids] = self.base_init_state
+                self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
+            else:
+                self.root_states[robot_env_ids] = self.base_init_state
+                self.root_states[robot_env_ids, 0:1] += torch_rand_float(self.env_origins[env_ids, 0:1] - 0.8, self.env_origins[env_ids, 0:1] + 0.8, (len(robot_env_ids),1),device=self.device)
+                self.root_states[robot_env_ids, 1:2] += torch_rand_float(self.env_origins[env_ids, 1:2] - 1.8, self.env_origins[env_ids, 1:2] + 1.8, (len(robot_env_ids),1),device=self.device)
+
+
             # self.root_states[robot_env_ids, 0:1] += torch_rand_float(-cfg.terrain.x_init_range,
             #                                                    cfg.terrain.x_init_range, (len(robot_env_ids), 1),
             #                                                    device=self.device)
@@ -990,8 +998,14 @@ class LeggedRobot(BaseTask):
             self.root_states[robot_env_ids, 0] += cfg.terrain.x_init_offset
             self.root_states[robot_env_ids, 1] += cfg.terrain.y_init_offset
         else:
-            self.root_states[robot_env_ids] = self.base_init_state
-            self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
+            if not isRandomInit:
+                self.root_states[robot_env_ids] = self.base_init_state
+                self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
+            else:
+                self.root_states[robot_env_ids] = self.base_init_state
+                self.root_states[robot_env_ids, 0:1] += torch_rand_float(self.env_origins[env_ids, 0:1] - 0.8, self.env_origins[env_ids, 0:1] + 0.8, (len(robot_env_ids),1),device=self.device)
+                self.root_states[robot_env_ids, 1:2] += torch_rand_float(self.env_origins[env_ids, 1:2] - 1.8, self.env_origins[env_ids, 1:2] + 1.8, (len(robot_env_ids),1),device=self.device)
+
 
         # base yaws
         # init_yaws = torch_rand_float(-cfg.terrain.yaw_init_range,
@@ -1006,7 +1020,7 @@ class LeggedRobot(BaseTask):
         robot_env_ids_int32 = robot_env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
-                                                     gymtorch.unwrap_tensor(robot_env_ids_int32[env_ids]), len(robot_env_ids_int32[env_ids]))
+                                                     gymtorch.unwrap_tensor(robot_env_ids_int32), len(robot_env_ids_int32))
 
         if cfg.env.record_video and 0 in env_ids:
             if self.complete_video_frames is None:
