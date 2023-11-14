@@ -43,7 +43,7 @@ caches = DataCaches(1)
 class RunnerArgs(PrefixProto, cli=False):
     # runner
     algorithm_class_name = 'RMA'
-    num_steps_per_env = 50  # per iteration
+    num_steps_per_env = 100  # per iteration
     max_iterations = 1500  # number of policy updates
 
     # logging
@@ -160,15 +160,28 @@ class Runner:
 
         tot_iter = self.current_learning_iteration + num_learning_iterations
         total_dones = []
+        total_rews_buf = []
+        y_dist_rews_buf = []
+        wall_dist_rews_buf = []
+        ep_goal_rews_buf = []
+        num_traj_buf = []
+
         model_root_path = os.path.join(logger.root, logger.prefix)
         for it in range(self.current_learning_iteration, tot_iter):
             start = time.time()
             # Rollout
             
-            env_dones = 0
+            tot_success = 0
+            tot_rew = 0
+            tot_y_dist_rew = 0
+            tot_wall_dist_rew = 0
+            tot_goal_rew = 0
+            num_traj = self.env.num_envs
+            prev_dones = 0
             with torch.inference_mode():
                 dones = None
                 for i in range(self.num_steps_per_env):
+                    num_traj += prev_dones
                     if self.isTorque:
                         actions_train = self.alg.act(obs[:num_train_envs], privileged_obs[:num_train_envs],
                                                     obs_history[:num_train_envs])
@@ -182,6 +195,16 @@ class Runner:
 
                     ret = self.env.step(torch.cat((actions_train, actions_eval), dim=0))
                     obs_dict, rewards, dones, infos = ret
+
+                    num_success = torch.sum(dones.to(dtype=torch.float))
+                    tot_success += num_success
+                    prev_dones = num_success
+
+                    tot_rew += infos['rew_buf'].sum()
+                    tot_y_dist_rew += infos['y_dist_rew'].sum()
+                    tot_wall_dist_rew += infos['closest_wall_dist_rew'].sum()
+                    tot_goal_rew += infos['goal_rew'].sum()
+
                     obs, obs_history = obs_dict["obs"], obs_dict["obs_history"]
                     obs, obs_history = obs.to(self.device), obs_history.to(self.device)
 
@@ -229,8 +252,17 @@ class Runner:
                     if 'curriculum/distribution' in infos:
                         distribution = infos['curriculum/distribution']
 
-                env_dones = 100 * dones.sum()/self.env.num_envs
+                env_dones = 100 * tot_success / num_traj
+                ep_rewards_mean = tot_rew / num_traj
+                ep_y_dist_rews_mean = tot_y_dist_rew / num_traj
+                ep_wall_dist_rews_mean = tot_wall_dist_rew / num_traj
+                ep_goal_rews_mean = tot_goal_rew / num_traj
                 total_dones.append(env_dones)
+                total_rews_buf.append(ep_rewards_mean)
+                y_dist_rews_buf.append(ep_y_dist_rews_mean)
+                wall_dist_rews_buf.append(ep_wall_dist_rews_mean)
+                ep_goal_rews_buf.append(ep_goal_rews_mean)
+                num_traj_buf.append(num_traj)
 
                 stop = time.time()
                 collection_time = stop - start
@@ -240,24 +272,26 @@ class Runner:
                 # self.alg.compute_returns(obs_history[:num_train_envs], privileged_obs[:num_train_envs])
                 self.alg.compute_returns(obs_history_vel[:num_train_envs])
 
-                print('Reward Means:')
-                print(f'Train Envs: {rewards[:num_train_envs].mean()}')
-                print(f'Eval Envs: {rewards[num_train_envs:].mean()}')
-                print(f'Success Rates: {env_dones}%')
+            print(f'\n\nSuccess Rates: {env_dones}%')
+            print(f'Reward Means: {ep_rewards_mean}')
+            print(f'Y Dist Rews: {ep_y_dist_rews_mean}')
+            print(f'Wall Dist Rews: {ep_wall_dist_rews_mean}')
+            print(f'Goal Rews: {ep_goal_rews_mean}')
+            print(f'Num Trajectories: {num_traj}')
 
+            if it == 0:
                 with open(os.path.join(model_root_path, 'success_rate.txt'), 'a') as f:
-                    f.write(f'{env_dones}\n')
+                    f.write(f'Success Rate,\t\tEpisode Reward,\tGoal Distance Rew,\t\tWall Dist Rew,\t\tGoal Rew\n')
 
-                if it % curriculum_dump_freq == 0:
-                    logger.save_pkl({"iteration": it,
-                                     **caches.slot_cache.get_summary(),
-                                     **caches.dist_cache.get_summary()},
-                                    path=f"curriculum/info.pkl", append=True)
-
-                    if 'curriculum/distribution' in infos:
-                        logger.save_pkl({"iteration": it,
-                                         "distribution": distribution},
-                                         path=f"curriculum/distribution.pkl", append=True)
+            if (it + 1) % 30:
+                with open(os.path.join(model_root_path, 'success_rate.txt'), 'a') as f:
+                    for env_dones, total_rew, y_dist_rew, wall_dist_rew, ep_goal_rew, num_traj in zip(total_dones, total_rews_buf, y_dist_rews_buf, wall_dist_rews_buf, ep_goal_rews_buf, num_traj_buf):
+                        f.write(f'{env_dones},\t\t{total_rew},\t\t{y_dist_rew},\t\t{wall_dist_rew},\t\t{ep_goal_rew}, \t\t{num_traj}\n')
+                total_dones = []
+                total_rews_buf = []
+                y_dist_rews_buf = []
+                wall_dist_rews_buf = []
+                ep_goal_rews_buf = []
 
             results = self.alg.update()
 
