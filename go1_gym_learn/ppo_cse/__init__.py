@@ -7,7 +7,7 @@ import torch
 from ml_logger import logger
 from params_proto import PrefixProto
 
-from .actor_critic import ActorCritic
+#from .actor_critic import ActorCritic
 from .rollout_storage import RolloutStorage
 
 
@@ -61,17 +61,31 @@ class RunnerArgs(PrefixProto, cli=False):
 
 class Runner:
 
-    def __init__(self, env, device='cpu'):
-        from .ppo import PPO
+    def __init__(self, env, device='cpu', isTorque=True):
 
         self.device = device
         self.env = env
+        self.isTorque = isTorque
 
-        actor_critic = ActorCritic(self.env.num_obs,
-                                      self.env.num_privileged_obs,
-                                      self.env.num_obs_history,
-                                      self.env.num_actions,
-                                      ).to(self.device)
+        if self.isTorque:
+            from .ppo import PPO
+            from .actor_critic import ActorCritic
+
+            actor_critic = ActorCritic(self.env.num_obs,
+                                        self.env.num_privileged_obs,
+                                        self.env.num_obs_history,
+                                        self.env.num_actions,
+                                        ).to(self.device)
+            self.alg = PPO(actor_critic, device=self.device)
+        else:
+            from .ppo_navigate import PPO
+            from .actor_critic_navigate import ActorCritic
+
+            actor_critic = ActorCritic(self.env.num_obs_vel,
+                                        self.env.num_obs_history_vel,
+                                        self.env.num_actions_vel,
+                                        ).to(self.device)
+            self.alg = PPO(actor_critic, device=self.device)
 
         if RunnerArgs.resume:
             # load pretrained weights from resume_path
@@ -90,13 +104,15 @@ class Runner:
                     self.env.curricula[gait_id].weights = distribution_last[f"weights_{gait_name}"]
                     print(gait_name)
 
-        self.alg = PPO(actor_critic, device=self.device)
         self.num_steps_per_env = RunnerArgs.num_steps_per_env
 
         # init storage and model
-        self.alg.init_storage(self.env.num_train_envs, self.num_steps_per_env, [self.env.num_obs],
+        if self.isTorque:
+            self.alg.init_storage(self.env.num_train_envs, self.num_steps_per_env, [self.env.num_obs],
                               [self.env.num_privileged_obs], [self.env.num_obs_history], [self.env.num_actions])
-
+        else:
+            self.alg.init_storage(self.env.num_train_envs, self.num_steps_per_env, [self.env.num_obs_vel],
+                              [self.env.num_obs_history_vel], [self.env.num_actions_vel])
         self.tot_timesteps = 0
         self.tot_time = 0
         self.current_learning_iteration = 0
@@ -119,9 +135,20 @@ class Runner:
         num_train_envs = self.env.num_train_envs
 
         obs_dict = self.env.get_observations()  # TODO: check, is this correct on the first step?
-        obs, privileged_obs, obs_history = obs_dict["obs"], obs_dict["privileged_obs"], obs_dict["obs_history"]
-        obs, privileged_obs, obs_history = obs.to(self.device), privileged_obs.to(self.device), obs_history.to(
-            self.device)
+        obs, obs_history = obs_dict["obs"], obs_dict["obs_history"]
+        obs, obs_history = obs.to(self.device), obs_history.to(self.device)
+
+        if "privileged_obs" in obs_dict:
+            privileged_obs = obs_dict["privileged_obs"]
+            privileged_obs = privileged_obs.to(self.device)
+
+        if "obs_vel" in obs_dict:
+            obs_vel = obs_dict["obs_vel"]
+            obs_vel = obs_vel.to(self.device)
+
+        if 'obs_history_vel' in obs_dict:
+            obs_history_vel = obs_dict["obs_history_vel"]
+            obs_history_vel = obs_history_vel.to(self.device)
         self.alg.actor_critic.train()  # switch to train mode (for dropout for example)
 
         rewbuffer = deque(maxlen=100)
@@ -137,20 +164,34 @@ class Runner:
             # Rollout
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
-                    actions_train = self.alg.act(obs[:num_train_envs], privileged_obs[:num_train_envs],
-                                                 obs_history[:num_train_envs])
-                    if eval_expert:
-                        actions_eval = self.alg.actor_critic.act_teacher(obs_history[num_train_envs:],
-                                                                         privileged_obs[num_train_envs:])
-                    else:
+                    if self.isTorque:
+                        actions_train = self.alg.act(obs[:num_train_envs], privileged_obs[:num_train_envs],
+                                                    obs_history[:num_train_envs])
                         actions_eval = self.alg.actor_critic.act_student(obs_history[num_train_envs:])
+                    else:
+                        vel_actions_train = self.alg.act(obs_vel[:num_train_envs], obs_history_vel[:num_train_envs])
+                        actions_train = self.env.convert_vel_to_action(vel_actions_train, obs_history[:num_train_envs], env_ids=list(range(num_train_envs)))
+
+                        vel_actions_eval = self.alg.actor_critic.act_student(obs_history_vel[num_train_envs:])
+                        actions_eval = self.env.convert_vel_to_action(vel_actions_eval, obs_history[num_train_envs:], env_ids = list(range(num_train_envs, self.env.num_envs)))
+
                     ret = self.env.step(torch.cat((actions_train, actions_eval), dim=0))
                     obs_dict, rewards, dones, infos = ret
-                    obs, privileged_obs, obs_history = obs_dict["obs"], obs_dict["privileged_obs"], obs_dict[
-                        "obs_history"]
+                    obs, obs_history = obs_dict["obs"], obs_dict["obs_history"]
+                    obs, obs_history = obs.to(self.device), obs_history.to(self.device)
 
-                    obs, privileged_obs, obs_history, rewards, dones = obs.to(self.device), privileged_obs.to(
-                        self.device), obs_history.to(self.device), rewards.to(self.device), dones.to(self.device)
+                    if "privileged_obs" in obs_dict:
+                        privileged_obs = obs_dict["privileged_obs"]
+                        privileged_obs = privileged_obs.to(self.device)
+
+                    if "obs_vel" in obs_dict:
+                        obs_vel = obs_dict["obs_vel"]
+                        obs_vel = obs_vel.to(self.device)
+
+                    obs, obs_history = obs_dict["obs"], obs_dict["obs_history"]
+
+                    obs, obs_history, rewards, dones = obs.to(self.device), obs_history.to(self.device), rewards.to(self.device), dones.to(self.device)
+
                     self.alg.process_env_step(rewards[:num_train_envs], dones[:num_train_envs], infos)
 
                     if 'train/episode' in infos:
@@ -188,7 +229,12 @@ class Runner:
 
                 # Learning step
                 start = stop
-                self.alg.compute_returns(obs_history[:num_train_envs], privileged_obs[:num_train_envs])
+                # self.alg.compute_returns(obs_history[:num_train_envs], privileged_obs[:num_train_envs])
+                self.alg.compute_returns(obs_history_vel[:num_train_envs])
+
+                print('Reward Means:')
+                print(f'Train Envs: {rewards[:num_train_envs].mean()}')
+                print(f'Eval Envs: {rewards[num_train_envs:].mean()}')
 
                 if it % curriculum_dump_freq == 0:
                     logger.save_pkl({"iteration": it,
@@ -201,7 +247,15 @@ class Runner:
                                          "distribution": distribution},
                                          path=f"curriculum/distribution.pkl", append=True)
 
-            mean_value_loss, mean_surrogate_loss, mean_adaptation_module_loss, mean_decoder_loss, mean_decoder_loss_student, mean_adaptation_module_test_loss, mean_decoder_test_loss, mean_decoder_test_loss_student = self.alg.update()
+            results = self.alg.update()
+
+            if self.isTorque:
+                mean_value_loss, mean_surrogate_loss, mean_adaptation_module_loss, mean_decoder_loss, mean_decoder_loss_student, mean_adaptation_module_test_loss, mean_decoder_test_loss, mean_decoder_test_loss_student = results
+
+            else:
+                mean_value_loss, mean_surrogate_loss, mean_decoder_loss, mean_decoder_loss_student, mean_decoder_test_loss, mean_decoder_test_loss_student = results
+                mean_adaptation_module_loss = 0
+                mean_adaptation_module_test_loss = 0
             stop = time.time()
             learn_time = stop - start
 
@@ -237,17 +291,18 @@ class Runner:
 
                     os.makedirs(path, exist_ok=True)
 
-                    adaptation_module_path = f'{path}/adaptation_module_latest.jit'
-                    adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
-                    traced_script_adaptation_module = torch.jit.script(adaptation_module)
-                    traced_script_adaptation_module.save(adaptation_module_path)
+                    if self.isTorque:
+                        adaptation_module_path = f'{path}/adaptation_module_latest.jit'
+                        adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
+                        traced_script_adaptation_module = torch.jit.script(adaptation_module)
+                        traced_script_adaptation_module.save(adaptation_module_path)
 
                     body_path = f'{path}/body_latest.jit'
                     body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to('cpu')
                     traced_script_body_module = torch.jit.script(body_model)
                     traced_script_body_module.save(body_path)
 
-                    logger.upload_file(file_path=adaptation_module_path, target_path=f"checkpoints/", once=False)
+                    #logger.upload_file(file_path=adaptation_module_path, target_path=f"checkpoints/", once=False)
                     logger.upload_file(file_path=body_path, target_path=f"checkpoints/", once=False)
 
             self.current_learning_iteration += num_learning_iterations
@@ -260,10 +315,11 @@ class Runner:
 
             os.makedirs(path, exist_ok=True)
 
-            adaptation_module_path = f'{path}/adaptation_module_latest.jit'
-            adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
-            traced_script_adaptation_module = torch.jit.script(adaptation_module)
-            traced_script_adaptation_module.save(adaptation_module_path)
+            if self.isTorque:
+                adaptation_module_path = f'{path}/adaptation_module_latest.jit'
+                adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
+                traced_script_adaptation_module = torch.jit.script(adaptation_module)
+                traced_script_adaptation_module.save(adaptation_module_path)
 
             body_path = f'{path}/body_latest.jit'
             body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to('cpu')

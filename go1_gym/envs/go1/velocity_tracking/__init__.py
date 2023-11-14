@@ -8,7 +8,7 @@ from go1_gym.envs.base.legged_robot_config import Cfg
 
 
 class VelocityTrackingEasyEnv(LeggedRobot):
-    def __init__(self, sim_device, headless, num_envs=None, prone=False, deploy=False,
+    def __init__(self, sim_device, headless, torque_policy=None, num_envs=None, prone=False, deploy=False,
                  cfg: Cfg = None, eval_cfg: Cfg = None, initial_dynamics_dict=None, physics_engine="SIM_PHYSX"):
 
         if num_envs is not None:
@@ -16,11 +16,11 @@ class VelocityTrackingEasyEnv(LeggedRobot):
 
         sim_params = gymapi.SimParams()
         gymutil.parse_sim_config(vars(cfg.sim), sim_params)
-        super().__init__(cfg, sim_params, physics_engine, sim_device, headless, eval_cfg, initial_dynamics_dict)
+        super().__init__(cfg, sim_params, physics_engine, sim_device, headless, torque_policy, eval_cfg, initial_dynamics_dict)
 
 
     def step(self, actions):
-        self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras = super().step(actions)
+        self.obs_buf, self.obs_vel, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras = super().step(actions)
 
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices,
                                0:3]
@@ -41,10 +41,10 @@ class VelocityTrackingEasyEnv(LeggedRobot):
             "torques": self.torques.detach().cpu().numpy()
         })
 
-        return self.obs_buf, self.rew_buf, self.reset_buf, self.extras
+        return self.obs_buf, self.obs_vel, self.rew_buf, self.reset_buf, self.extras
 
     def reset(self):
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        obs, _, _, _ = self.step(torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))
-        return obs
+        obs, obs_vel, _, _, _ = self.step(torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))
+        return obs, obs_vel
 

@@ -1,6 +1,7 @@
 # License: see [LICENSE, LICENSES/legged_gym/LICENSE]
 
 import sys
+from calendar import c
 
 import gym
 import torch
@@ -40,6 +41,10 @@ class BaseTask(gym.Env):
         self.num_privileged_obs = cfg.env.num_privileged_obs
         self.num_actions = cfg.env.num_actions
 
+        self.num_obs_vel = cfg.env.num_obs_vel
+        self.num_obs_history_vel = cfg.env.num_observation_history_vel
+        self.num_actions_vel = cfg.env.num_actions_vel
+
         if eval_cfg is not None:
             self.num_eval_envs = eval_cfg.env.num_envs
             self.num_train_envs = cfg.env.num_envs
@@ -63,6 +68,8 @@ class BaseTask(gym.Env):
         self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device,
                                               dtype=torch.float)
+        self.obs_vel = torch.zeros(self.num_envs, self.num_obs_vel, device=self.device,
+                                   dtype=torch.float)
         # self.num_privileged_obs = self.num_obs
 
         self.extras = {}
@@ -90,6 +97,9 @@ class BaseTask(gym.Env):
 
     def get_privileged_observations(self):
         return self.privileged_obs_buf
+    
+    def get_obs_vel(self):
+        return self.obs_vel
 
     def reset_idx(self, env_ids):
         """Reset selected robots"""

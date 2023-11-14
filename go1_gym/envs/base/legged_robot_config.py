@@ -10,12 +10,15 @@ class Cfg(PrefixProto, cli=False):
         num_scalar_observations = 42
         # if not None a privilige_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise
         num_privileged_obs = 18
+        num_obs_vel = 8
         privileged_future_horizon = 1
         num_actions = 12
+        num_actions_vel = 3
         num_observation_history = 15
-        env_spacing = 3.  # not used with heightfields/trimeshes
+        num_observation_history_vel = 15
+        env_spacing = 5.  # not used with heightfields/trimeshes
         send_timeouts = True  # send time out information to the algorithm
-        episode_length_s = 20  # episode length in seconds
+        episode_length_s = 15  # episode length in seconds
         observe_vel = True
         observe_only_ang_vel = False
         observe_only_lin_vel = False
@@ -62,7 +65,7 @@ class Cfg(PrefixProto, cli=False):
         priv_observe_dummy_variable = False
 
     class terrain(PrefixProto, cli=False):
-        mesh_type = 'trimesh'  # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'plane'  # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1  # [m]
         vertical_scale = 0.005  # [m]
         border_size = 0  # 25 # [m]
@@ -199,8 +202,8 @@ class Cfg(PrefixProto, cli=False):
         tracking_contacts_shaped_vel = 0.8
 
     class init_state(PrefixProto, cli=False):
-        pos = [-1.5, 0.0, 1.]  # x,y,z [m]
-        rot = [0.707, 0.0, 0.0, 0.707]  # x,y,z,w [quat]
+        pos = [0, -1.5, .5]  # x,y,z [m]
+        rot = [0.0, 0.0, 0.7, 0.7]  # x,y,z,w [quat]
         lin_vel = [0.0, 0.0, 0.0]  # x,y,z [m/s]
         ang_vel = [0.0, 0.0, 0.0]  # x,y,z [rad/s]
         # target angles when action = 0.0
@@ -263,10 +266,10 @@ class Cfg(PrefixProto, cli=False):
         gravity_impulse_duration = 1.0
         randomize_gravity = False
         gravity_range = [-1.0, 1.0]
-        push_robots = True
+        push_robots = False
         push_interval_s = 15
         max_push_vel_xy = 1.
-        randomize_lag_timesteps = True
+        randomize_lag_timesteps = False
         lag_timesteps = 6
 
     class rewards(PrefixProto, cli=False):
@@ -376,7 +379,7 @@ class Cfg(PrefixProto, cli=False):
         depth_image = 1.0
 
     class noise(PrefixProto, cli=False):
-        add_noise = False
+        add_noise = True
         noise_level = 1.0  # scales other values
 
     class noise_scales(PrefixProto, cli=False):

@@ -43,6 +43,7 @@ def load_env(label, headless=False):
 
     #dirs = glob.glob(f"../runs/{label}/*")
     #logdir = sorted(dirs)[0]
+    policy = load_policy(logdir)
 
     with open(logdir + "/parameters.pkl", 'rb') as file:
         pkl_cfg = pkl.load(file)
@@ -83,20 +84,19 @@ def load_env(label, headless=False):
     Cfg.domain_rand.randomize_lag_timesteps = True
     Cfg.control.control_type = "actuator_net"
 
-    Cfg.init_state.pos = [0, -1.5, 1.]
-    #Cfg.init_state.pos = [0, 0, 1.]
+    Cfg.init_state.pos = [0, -1.5, .5]  # x,y,z [m]
+    #Cfg.init_state.pos = [0, 0, 1.] #For random spwaning
     Cfg.init_state.rot = [0,0,0.707,0.707]
 
     from go1_gym.envs.wrappers.history_wrapper import HistoryWrapper
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=False, cfg=Cfg)
+    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=policy)
     env = HistoryWrapper(env)
 
     # load policy
     from ml_logger import logger
     from go1_gym_learn.ppo_cse.actor_critic import ActorCritic
 
-    policy = load_policy(logdir)
 
     return env, policy
 
@@ -113,7 +113,7 @@ def play_go1(headless=True):
     #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
     #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
     
-    env, policy = load_env(label, headless=headless)
+    env, torque_policy = load_env(label, headless)
 
     num_eval_steps = 1000
     gaits = {"pronking": [0, 0, 0],
@@ -122,9 +122,9 @@ def play_go1(headless=True):
              "pacing": [0, 0, 0.5]}
 
     # x_vel_cmd, y_vel_cmd, yaw_vel_cmd = 0.0, 0.0, 0.0
-    x_vel_cmd = np.concatenate([np.full(200, 0.4), np.full(200, 0.0), np.full(200, -0.3), np.full(200, 0.0), np.full(200, 0.0)])
+    x_vel_cmd = np.concatenate([np.full(200, 0.4), np.full(200, 0.0), np.full(200, 0.4), np.full(200, 0.0), np.full(200, 0.0)])
     y_vel_cmd = np.concatenate([np.full(200, 0.0), np.full(200, 0.3), np.full(200, 0.0), np.full(200, -0.5), np.full(200, 0.0)])
-    yaw_vel_cmd = np.concatenate([np.full(800, 0.0), np.full(200, 0.25)])
+    yaw_vel_cmd = np.concatenate([np.full(800, 0.0), np.full(200, 0.0)])
 
     body_height_cmd = 0.0
     step_frequency_cmd = 3.0

@@ -57,7 +57,7 @@ class RolloutStorage:
     def add_transitions(self, transition: Transition):
         if self.step >= self.num_transitions_per_env:
             raise AssertionError("Rollout buffer overflow")
-        self.observations[self.step].copy_(transition.observations)
+        #self.observations[self.step].copy_(transition.observations)
         self.privileged_observations[self.step].copy_(transition.privileged_observations)
         self.observation_histories[self.step].copy_(transition.observation_histories)
         self.actions[self.step].copy_(transition.actions)

@@ -13,6 +13,7 @@ class VecEnv(ABC):
     num_privileged_obs: int
     num_actions: int
     max_episode_length: int
+    obs_vel: torch.Tensor
     privileged_obs_buf: torch.Tensor
     obs_buf: torch.Tensor
     rew_buf: torch.Tensor
@@ -36,4 +37,8 @@ class VecEnv(ABC):
 
     @abstractmethod
     def get_privileged_observations(self) -> Union[torch.Tensor, None]:
+        pass
+
+    @abstractmethod
+    def get_obs_vel(self) -> torch.Tensor:
         pass
