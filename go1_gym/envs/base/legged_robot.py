@@ -1,5 +1,3 @@
-# License: see [LICENSE, LICENSES/legged_gym/LICENSE]
-
 import os
 from typing import Dict
 import numpy as np
@@ -1711,4 +1709,3 @@ class LeggedRobot(BaseTask):
         heights = torch.min(heights, heights3)
 
         return heights.view(len(env_ids), -1) * self.terrain.cfg.vertical_scale
- 

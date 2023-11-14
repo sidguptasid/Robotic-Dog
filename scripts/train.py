@@ -229,8 +229,7 @@ def train_go1(headless=True):
     Cfg.commands.binary_phases = True
     Cfg.commands.gaitwise_curricula = True
 
-    torque_policy = load_policy('/common/home/st1122/Projects/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
-
+    torque_policy = load_policy('/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
     env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=torque_policy)
 
     # log the experiment parameters
