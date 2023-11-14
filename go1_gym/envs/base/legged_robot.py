@@ -19,7 +19,7 @@ from scipy.spatial.transform import Rotation as R
 
 class LeggedRobot(BaseTask):
     def __init__(self, cfg: Cfg, sim_params, physics_engine, sim_device, headless, torque_policy=None, eval_cfg=None,
-                 initial_dynamics_dict=None):
+                 initial_dynamics_dict=None, random_init=False):
         """ Parses the provided config file,
             calls create_sim() (which creates, simulation, terrain and environments),
             initilizes pytorch buffers used during training
@@ -38,6 +38,7 @@ class LeggedRobot(BaseTask):
         self.height_samples = None
         self.debug_viz = False
         self.init_done = False
+        self.random_init = random_init
         self.initial_dynamics_dict = initial_dynamics_dict
         if eval_cfg is not None: self._parse_cfg(eval_cfg)
         self._parse_cfg(self.cfg)
@@ -146,8 +147,6 @@ class LeggedRobot(BaseTask):
         """
         robot_y_pos = self.root_states[self.robot_actor_idxs, 1] - self.env_origins[:, 1]
         self.reset_buf = robot_y_pos >= 1.5
-        self.time_out_buf = self.episode_length_buf > self.cfg.env.max_episode_length  # no terminal reward for time-outs
-        self.reset_buf |= self.time_out_buf
 
         # self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1.,
         #                            dim=1)
@@ -159,7 +158,10 @@ class LeggedRobot(BaseTask):
             
         #     self.reset_buf = torch.logical_or(self.body_height_buf, self.reset_buf)
 
-    def convert_vel_to_action(self, vel, obs_hist, env_ids):
+    def convert_vel_to_action(self, vel, obs_hist, env_ids=None):
+        vel = torch.clip(vel.to(self.device), min=torch.tensor([-0.5, -0.5, -0.5]).to(self.device), max=torch.tensor([0.5, 0.5, 0.5]).to(self.device))
+        if env_ids is None:
+            env_ids = [0]
         if len(env_ids) == 0:
             return torch.tensor([])
 
@@ -332,7 +334,7 @@ class LeggedRobot(BaseTask):
 
         closest_wall_dist[success_indices] = 0
 
-        rewards[indices_to_update] = - (y_dist[indices_to_update] * 1.5) + closest_wall_dist[indices_to_update]
+        rewards[indices_to_update] = - y_dist[indices_to_update] * 1.5 + closest_wall_dist[indices_to_update]
 
         self.rew_buf = torch.tensor(rewards).to(self.device)
 
@@ -882,7 +884,12 @@ class LeggedRobot(BaseTask):
 
         # base position
         if self.custom_origins:
-            self.root_states[robot_env_ids] = self.base_init_state
+            if self.random_init:
+                self.root_states[robot_env_ids, 0:1] = torch_rand_float(-0.5, 0.5, (len(robot_env_ids), 1), device=self.device)
+                self.root_states[robot_env_ids, 1:2] = torch_rand_float(0, 0.8, (len(robot_env_ids), 1), device=self.device)
+            else:
+                self.root_states[robot_env_ids] = self.base_init_state
+
             self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
             # self.root_states[robot_env_ids, 0:1] += torch_rand_float(-cfg.terrain.x_init_range,
             #                                                    cfg.terrain.x_init_range, (len(robot_env_ids), 1),
@@ -893,15 +900,23 @@ class LeggedRobot(BaseTask):
             self.root_states[robot_env_ids, 0] += cfg.terrain.x_init_offset
             self.root_states[robot_env_ids, 1] += cfg.terrain.y_init_offset
         else:
-            self.root_states[robot_env_ids] = self.base_init_state
+            if self.random_init:
+                self.root_states[robot_env_ids, 0:1] = torch_rand_float(-0.5, 0.5, (len(robot_env_ids), 1), device=self.device)
+                self.root_states[robot_env_ids, 1:2] = torch_rand_float(0, 0.8, (len(robot_env_ids), 1), device=self.device)
+            else:
+                self.root_states[robot_env_ids] = self.base_init_state
             self.root_states[robot_env_ids, :3] += self.env_origins[env_ids]
 
         # base yaws
+
+        if self.random_init:
+            init_yaws = torch_rand_float(-np.pi, np.pi, (len(env_ids), 1),
+                                        device=self.device)
         # init_yaws = torch_rand_float(-cfg.terrain.yaw_init_range,
         #                              cfg.terrain.yaw_init_range, (len(env_ids), 1),
         #                              device=self.device)
-        # quat = quat_from_angle_axis(init_yaws, torch.Tensor([0, 0, 1]).to(self.device))[:, 0, :]
-        # self.root_states[env_ids, 3:7] = quat
+            quat = quat_from_angle_axis(init_yaws, torch.Tensor([0, 0, 1]).to(self.device))[:, 0, :]
+            self.root_states[env_ids, 3:7] = quat
 
         # base velocities
         # self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(robot_env_ids), 6),

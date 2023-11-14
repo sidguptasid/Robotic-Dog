@@ -41,6 +41,7 @@ class HistoryWrapper(gym.Wrapper):
     def reset_idx(self, env_ids):  # it might be a problem that this isn't getting called!!
         ret = super().reset_idx(env_ids)
         self.obs_history[env_ids, :] = 0
+        self.obs_history_vel[env_ids, :] = 0
         return ret
 
     def reset(self):
@@ -48,8 +49,8 @@ class HistoryWrapper(gym.Wrapper):
         privileged_obs = self.env.get_privileged_observations()
         obs_vel = self.env.get_obs_vel()
         self.obs_history[:, :] = 0
-        return {"obs": ret, "privileged_obs": privileged_obs, "obs_history": self.obs_history, 'obs_vel': obs_vel}
-
+        self.obs_history_vel[:, :] = 0
+        return {"obs": ret, "privileged_obs": privileged_obs, "obs_history": self.obs_history, 'obs_vel': obs_vel.to(dtype=torch.float), 'obs_history_vel': self.obs_history_vel.to(dtype=torch.float)}
 
 if __name__ == "__main__":
     from tqdm import trange

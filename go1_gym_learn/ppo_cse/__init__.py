@@ -43,7 +43,7 @@ caches = DataCaches(1)
 class RunnerArgs(PrefixProto, cli=False):
     # runner
     algorithm_class_name = 'RMA'
-    num_steps_per_env = 24  # per iteration
+    num_steps_per_env = 50  # per iteration
     max_iterations = 1500  # number of policy updates
 
     # logging
@@ -159,10 +159,15 @@ class Runner:
         cur_episode_length = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
 
         tot_iter = self.current_learning_iteration + num_learning_iterations
+        total_dones = []
+        model_root_path = os.path.join(logger.root, logger.prefix)
         for it in range(self.current_learning_iteration, tot_iter):
             start = time.time()
             # Rollout
+            
+            env_dones = 0
             with torch.inference_mode():
+                dones = None
                 for i in range(self.num_steps_per_env):
                     if self.isTorque:
                         actions_train = self.alg.act(obs[:num_train_envs], privileged_obs[:num_train_envs],
@@ -224,6 +229,9 @@ class Runner:
                     if 'curriculum/distribution' in infos:
                         distribution = infos['curriculum/distribution']
 
+                env_dones = 100 * dones.sum()/self.env.num_envs
+                total_dones.append(env_dones)
+
                 stop = time.time()
                 collection_time = stop - start
 
@@ -235,6 +243,10 @@ class Runner:
                 print('Reward Means:')
                 print(f'Train Envs: {rewards[:num_train_envs].mean()}')
                 print(f'Eval Envs: {rewards[num_train_envs:].mean()}')
+                print(f'Success Rates: {env_dones}%')
+
+                with open(os.path.join(model_root_path, 'success_rate.txt'), 'a') as f:
+                    f.write(f'{env_dones}\n')
 
                 if it % curriculum_dump_freq == 0:
                     logger.save_pkl({"iteration": it,
