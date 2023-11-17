@@ -62,10 +62,10 @@ def load_env(label, headless=False):
 
     #dirs = glob.glob(f"../runs/{label}/*")
     #logdir = sorted(dirs)[0]
-    policy = load_policy(logdir)
+    policy = load_velocity_policy(logdir)
     torque_policy = load_policy('/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
 
-    with open(os.path.join(logdir, "parameters.pkl"), 'rb') as file
+    with open(os.path.join(logdir, "parameters.pkl"), 'rb') as file:
         pkl_cfg = pkl.load(file)
         print(pkl_cfg.keys())
         cfg = pkl_cfg["Cfg"]
