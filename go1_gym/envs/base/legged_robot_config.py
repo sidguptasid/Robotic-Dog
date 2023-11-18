@@ -379,7 +379,7 @@ class Cfg(PrefixProto, cli=False):
         depth_image = 1.0
 
     class noise(PrefixProto, cli=False):
-        add_noise = True
+        add_noise = False
         noise_level = 1.0  # scales other values
 
     class noise_scales(PrefixProto, cli=False):
