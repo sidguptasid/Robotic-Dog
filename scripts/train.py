@@ -1,33 +1,36 @@
-
 import os
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 import isaacgym
+
 assert isaacgym
 
 import torch
 
+
 def load_policy(logdir):
-    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
+    body = torch.jit.load(logdir + "/checkpoints/body_latest.jit")
     import os
-    adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')
+
+    adaptation_module = torch.jit.load(
+        logdir + "/checkpoints/adaptation_module_latest.jit"
+    )
 
     def policy(obs_hist, info={}):
         """
         Converts the observation into a latent vector
         and then passes it to the body to get the action
         """
-        latent = adaptation_module.forward(obs_hist.to('cpu'))
-        action = body.forward(torch.cat((obs_hist.to('cpu'), latent), dim=-1))
-        info['latent'] = latent
+        latent = adaptation_module.forward(obs_hist.to("cpu"))
+        action = body.forward(torch.cat((obs_hist.to("cpu"), latent), dim=-1))
+        info["latent"] = latent
         return action
 
     return policy
 
 
 def train_go1(headless=True):
-
-
     from go1_gym.envs.base.legged_robot_config import Cfg
     from go1_gym.envs.go1.go1_config import config_go1
     from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
@@ -161,8 +164,8 @@ def train_go1(headless=True):
     Cfg.reward_scales.feet_air_time = 0.0
     Cfg.reward_scales.hop_symmetry = 0.0
     Cfg.rewards.kappa_gait_probs = 0.07
-    Cfg.rewards.gait_force_sigma = 100.
-    Cfg.rewards.gait_vel_sigma = 10.
+    Cfg.rewards.gait_force_sigma = 100.0
+    Cfg.rewards.gait_vel_sigma = 10.0
     Cfg.reward_scales.tracking_contacts_shaped_force = 4.0
     Cfg.reward_scales.tracking_contacts_shaped_vel = 4.0
     Cfg.reward_scales.collision = -5.0
@@ -172,12 +175,12 @@ def train_go1(headless=True):
     Cfg.rewards.only_positive_rewards_ji22_style = True
     Cfg.rewards.sigma_rew_neg = 0.02
 
-    Cfg.init_state.pos = [0, -1.5, .5]  # x,y,z [m]
+    Cfg.init_state.pos = [0, -1.5, 0.5]  # x,y,z [m]
     Cfg.init_state.rot = [0.0, 0.0, 0.7, 0.7]
 
-    Cfg.commands.lin_vel_x = [-.5, .5]
+    Cfg.commands.lin_vel_x = [-0.5, 0.5]
     Cfg.commands.lin_vel_y = [-0.5, 0.5]
-    Cfg.commands.ang_vel_yaw = [-.5, .5]
+    Cfg.commands.ang_vel_yaw = [-0.5, 0.5]
     Cfg.commands.body_height_cmd = [-0.25, 0.15]
     Cfg.commands.gait_frequency_cmd_range = [2.0, 4.0]
     Cfg.commands.gait_phase_cmd_range = [0.0, 1.0]
@@ -190,9 +193,9 @@ def train_go1(headless=True):
     Cfg.commands.stance_width_range = [0.10, 0.45]
     Cfg.commands.stance_length_range = [0.35, 0.45]
 
-    Cfg.commands.limit_vel_x = [-.5, .5]
+    Cfg.commands.limit_vel_x = [-0.5, 0.5]
     Cfg.commands.limit_vel_y = [-0.5, 0.5]
-    Cfg.commands.limit_vel_yaw = [-.5, .5]
+    Cfg.commands.limit_vel_yaw = [-0.5, 0.5]
     Cfg.commands.limit_body_height = [-0.25, 0.15]
     Cfg.commands.limit_gait_frequency = [2.0, 4.0]
     Cfg.commands.limit_gait_phase = [0.0, 1.0]
@@ -229,29 +232,45 @@ def train_go1(headless=True):
     Cfg.commands.binary_phases = True
     Cfg.commands.gaitwise_curricula = True
 
-    torque_policy = load_policy('/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=torque_policy,
-      random_init=False)
+    torque_policy = load_policy(
+        "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545"
+    )
+    env = VelocityTrackingEasyEnv(
+        sim_device="cuda:0",
+        headless=headless,
+        cfg=Cfg,
+        torque_policy=torque_policy,
+        random_init=False,
+    )
 
     # log the experiment parameters
-    logger.log_params(AC_Args=vars(AC_Args), PPO_Args=vars(PPO_Args), RunnerArgs=vars(RunnerArgs),
-                      Cfg=vars(Cfg))
+    logger.log_params(
+        AC_Args=vars(AC_Args),
+        PPO_Args=vars(PPO_Args),
+        RunnerArgs=vars(RunnerArgs),
+        Cfg=vars(Cfg),
+    )
 
     env = HistoryWrapper(env)
     gpu_id = 0
     runner = Runner(env, device=f"cuda:{gpu_id}", isTorque=False)
-    runner.learn(num_learning_iterations=100000, init_at_random_ep_len=True, eval_freq=100)
+    runner.learn(
+        num_learning_iterations=100000, init_at_random_ep_len=True, eval_freq=100
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pathlib import Path
     from ml_logger import logger
     from go1_gym import MINI_GYM_ROOT_DIR
 
     stem = Path(__file__).stem
-    logger.configure(logger.utcnow(f'gait-conditioned-agility/%Y-%m-%d/{stem}/%H%M%S.%f'),
-                     root=Path(f"{MINI_GYM_ROOT_DIR}/runs").resolve(), )
-    logger.log_text("""
+    logger.configure(
+        logger.utcnow(f"gait-conditioned-agility/%Y-%m-%d/{stem}/%H%M%S.%f"),
+        root=Path(f"{MINI_GYM_ROOT_DIR}/runs").resolve(),
+    )
+    logger.log_text(
+        """
                 charts: 
                 - yKey: train/episode/rew_total/mean
                   xKey: iterations
@@ -277,7 +296,10 @@ if __name__ == '__main__':
                   glob: "videos/*.mp4"
                 - yKey: adaptation_loss/mean
                   xKey: iterations
-                """, filename=".charts.yml", dedent=True)
+                """,
+        filename=".charts.yml",
+        dedent=True,
+    )
 
     # to see the environment rendering, set headless=False
     train_go1(headless=True)
