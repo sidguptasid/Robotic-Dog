@@ -3,6 +3,8 @@ from collections import deque
 import copy
 import os
 
+from numpy import dtype
+
 import torch
 from ml_logger import logger
 from params_proto import PrefixProto
@@ -43,7 +45,7 @@ caches = DataCaches(1)
 class RunnerArgs(PrefixProto, cli=False):
     # runner
     algorithm_class_name = 'RMA'
-    num_steps_per_env = 100  # per iteration
+    num_steps_per_env = 200  # per iteration
     max_iterations = 1500  # number of policy updates
 
     # logging
@@ -116,7 +118,7 @@ class Runner:
         self.tot_timesteps = 0
         self.tot_time = 0
         self.current_learning_iteration = 0
-        self.last_recording_it = 0
+        self.last_recording_it = None
 
         self.env.reset()
 
@@ -178,6 +180,7 @@ class Runner:
             tot_goal_rew = 0
             num_traj = self.env.num_envs
             prev_dones = 0
+            frames = None
             with torch.inference_mode():
                 dones = None
                 for i in range(self.num_steps_per_env):
@@ -199,6 +202,9 @@ class Runner:
                     num_success = torch.sum(dones.to(dtype=torch.float))
                     tot_success += num_success
                     prev_dones = num_success
+
+                    if it == self.last_recording_it and dones[0] and frames is None:
+                        frames = self.env.get_complete_frames() or self.env.video_frames
 
                     tot_rew += infos['rew_buf'].sum()
                     tot_y_dist_rew += infos['y_dist_rew'].sum()
@@ -272,6 +278,11 @@ class Runner:
                 # self.alg.compute_returns(obs_history[:num_train_envs], privileged_obs[:num_train_envs])
                 self.alg.compute_returns(obs_history_vel[:num_train_envs])
 
+                if it == self.last_recording_it and frames is None:
+                    frames = self.env.get_complete_frames() or self.env.video_frames
+
+                self.env.reset()
+
             print(f'\n\nSuccess Rates: {env_dones}%')
             print(f'Reward Means: {ep_rewards_mean}')
             print(f'Y Dist Rews: {ep_y_dist_rews_mean}')
@@ -319,8 +330,6 @@ class Runner:
                 mean_adaptation_module_test_loss=mean_adaptation_module_test_loss
             )
 
-            if RunnerArgs.save_video_interval:
-                self.log_video(it)
 
             self.tot_timesteps += self.num_steps_per_env * self.env.num_envs
             if logger.every(RunnerArgs.log_freq, "iteration", start_on=1):
@@ -353,6 +362,13 @@ class Runner:
 
             self.current_learning_iteration += num_learning_iterations
 
+            if RunnerArgs.save_video_interval:
+                if (it + 1) % RunnerArgs.save_video_interval == 0:
+                    self.start_video_recording(it + 1)
+
+                if it == self.last_recording_it:
+                    self.log_video(it, frames)
+
         with logger.Sync():
             logger.torch_save(self.alg.actor_critic.state_dict(), f"checkpoints/ac_weights_{it:06d}.pt")
             logger.duplicate(f"checkpoints/ac_weights_{it:06d}.pt", f"checkpoints/ac_weights_last.pt")
@@ -376,26 +392,19 @@ class Runner:
             logger.upload_file(file_path=body_path, target_path=f"checkpoints/", once=False)
 
 
-    def log_video(self, it):
-        if it - self.last_recording_it >= RunnerArgs.save_video_interval:
-            self.env.start_recording()
-            if self.env.num_eval_envs > 0:
-                self.env.start_recording_eval()
-            print("START RECORDING")
-            self.last_recording_it = it
+    def start_video_recording(self, it):
+        self.env.start_recording()
+        self.env.complete_video_frames = []
+        if self.env.num_eval_envs > 0:
+            self.env.start_recording_eval()
+        print("START RECORDING")
+        self.last_recording_it = it
 
-        frames = self.env.get_complete_frames()
+    def log_video(self, it, frames):
         if len(frames) > 0:
             self.env.pause_recording()
             print("LOGGING VIDEO")
             logger.save_video(frames, f"videos/{it:05d}.mp4", fps=1 / self.env.dt)
-
-        if self.env.num_eval_envs > 0:
-            frames = self.env.get_complete_frames_eval()
-            if len(frames) > 0:
-                self.env.pause_recording_eval()
-                print("LOGGING EVAL VIDEO")
-                logger.save_video(frames, f"videos/{it:05d}_eval.mp4", fps=1 / self.env.dt)
 
     def get_inference_policy(self, device=None):
         self.alg.actor_critic.eval()  # switch to evaluation mode (dropout for example)
