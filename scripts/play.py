@@ -15,25 +15,30 @@ from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
 
 from tqdm import tqdm
 
+
 def load_policy(logdir):
-    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
+    body = torch.jit.load(logdir + "/checkpoints/body_latest.jit")
     import os
-    adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')
+
+    adaptation_module = torch.jit.load(
+        logdir + "/checkpoints/adaptation_module_latest.jit"
+    )
 
     def policy(obs_hist, info={}):
         """
         Converts the observation into a latent vector
         and then passes it to the body to get the action
         """
-        latent = adaptation_module.forward(obs_hist.to('cpu'))
-        action = body.forward(torch.cat((obs_hist.to('cpu'), latent), dim=-1))
-        info['latent'] = latent
+        latent = adaptation_module.forward(obs_hist.to("cpu"))
+        action = body.forward(torch.cat((obs_hist.to("cpu"), latent), dim=-1))
+        info["latent"] = latent
         return action
 
     return policy
 
+
 def load_velocity_policy(logdir):
-    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
+    body = torch.jit.load(logdir + "/checkpoints/body_latest.jit")
 
     def policy(obs, info={}):
         """
@@ -41,9 +46,8 @@ def load_velocity_policy(logdir):
         and then passes it to the body to get the action
         """
 
-        action = body.forward(obs["obs_history_vel"].to('cpu', dtype=torch.float))
+        action = body.forward(obs["obs_history_vel"].to("cpu", dtype=torch.float))
 
-    
         return action.cpu().detach()
 
     return policy
@@ -54,18 +58,20 @@ def load_env(label, headless=False):
         contents = os.listdir(label)
     except:
         contents = []
-    if 'parameters.pkl' not in contents:
+    if "parameters.pkl" not in contents:
         dirs = glob.glob(os.path.join(os.path.dirname(__file__), f"../runs/{label}/*"))
         logdir = sorted(dirs)[0]
     else:
         logdir = label
 
-    #dirs = glob.glob(f"../runs/{label}/*")
-    #logdir = sorted(dirs)[0]
+    # dirs = glob.glob(f"../runs/{label}/*")
+    # logdir = sorted(dirs)[0]
     policy = load_velocity_policy(logdir)
-    torque_policy = load_policy('/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
+    torque_policy = load_policy(
+        "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545"
+    )
 
-    with open(os.path.join(logdir, "parameters.pkl"), 'rb') as file:
+    with open(os.path.join(logdir, "parameters.pkl"), "rb") as file:
         pkl_cfg = pkl.load(file)
         print(pkl_cfg.keys())
         cfg = pkl_cfg["Cfg"]
@@ -105,20 +111,24 @@ def load_env(label, headless=False):
     Cfg.domain_rand.randomize_lag_timesteps = True
     Cfg.control.control_type = "actuator_net"
 
-    Cfg.init_state.pos = [0, -1.5, .5]  # x,y,z [m]
-    #Cfg.init_state.pos = [0, 0, 1.] #For random spwaning
+    Cfg.init_state.pos = [0, -1.5, 0.5]  # x,y,z [m]
+    # Cfg.init_state.pos = [0, 0, 1.] #For random spwaning
     Cfg.init_state.rot = [0.0, 0.0, 0.7, 0.7]
 
     from go1_gym.envs.wrappers.history_wrapper import HistoryWrapper
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=policy,
-        random_init=False)
+    env = VelocityTrackingEasyEnv(
+        sim_device="cuda:0",
+        headless=headless,
+        cfg=Cfg,
+        torque_policy=policy,
+        random_init=False,
+    )
     env = HistoryWrapper(env)
 
     # load policy
     from ml_logger import logger
     from go1_gym_learn.ppo_cse.actor_critic import ActorCritic
-
 
     return env, policy
 
@@ -131,11 +141,11 @@ def play_go1(headless=True):
     import glob
     import os
 
-    #label = "gait-conditioned-agility/pretrain-v0/train"
+    # label = "gait-conditioned-agility/pretrain-v0/train"
     label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-11-13/train/234829.495325"
-    #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
-    #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
-    
+    # label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
+    # label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
+
     env, vel_policy = load_env(label, headless)
 
     num_eval_steps = 750
@@ -148,13 +158,14 @@ def play_go1(headless=True):
 
     for i in tqdm(range(num_eval_steps)):
         vel_actions = vel_policy(obs)
-        torque_actions = env.convert_vel_to_action(vel_actions, obs['obs_history'])
+        torque_actions = env.convert_vel_to_action(vel_actions, obs["obs_history"])
 
         obs, rew, done, info = env.step(torque_actions)
 
         if done:
-            print('Success!')
+            print("Success!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # to see the environment rendering, set headless=False
     play_go1(headless=False)
