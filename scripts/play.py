@@ -15,8 +15,10 @@ from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
 
 from tqdm import tqdm
 
+random_init = True
 
-def load_policy(logdir):
+
+def load_torque_policy(logdir):
     body = torch.jit.load(logdir + "/checkpoints/body_latest.jit")
     import os
 
@@ -53,7 +55,7 @@ def load_velocity_policy(logdir):
     return policy
 
 
-def load_env(label, headless=False):
+def load_env(label, headless, random_init):
     try:
         contents = os.listdir(label)
     except:
@@ -67,7 +69,7 @@ def load_env(label, headless=False):
     # dirs = glob.glob(f"../runs/{label}/*")
     # logdir = sorted(dirs)[0]
     policy = load_velocity_policy(logdir)
-    torque_policy = load_policy(
+    torque_policy = load_torque_policy(
         "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545"
     )
 
@@ -121,8 +123,8 @@ def load_env(label, headless=False):
         sim_device="cuda:0",
         headless=headless,
         cfg=Cfg,
-        torque_policy=policy,
-        random_init=False,
+        torque_policy=torque_policy,
+        random_init=random_init,
     )
     env = HistoryWrapper(env)
 
@@ -146,7 +148,7 @@ def play_go1(headless=True):
     # label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
     # label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
 
-    env, vel_policy = load_env(label, headless)
+    env, vel_policy = load_env(label, headless, random_init=random_init)
 
     num_eval_steps = 750
 
