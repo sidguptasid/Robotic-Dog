@@ -15,6 +15,8 @@ from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
 
 from tqdm import tqdm
 
+label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-11-18/train/154651.039712"
+random_init=False
 def load_policy(logdir):
     body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
     import os
@@ -49,16 +51,16 @@ def load_velocity_policy(logdir):
     return policy
 
 
-def load_env(label, headless=False):
+def load_env(label, headless, random_init):
     try:
         contents = os.listdir(label)
     except:
         contents = []
-    if 'parameters.pkl' not in contents:
-        dirs = glob.glob(os.path.join(os.path.dirname(__file__), f"../runs/{label}/*"))
-        logdir = sorted(dirs)[0]
-    else:
-        logdir = label
+    #if 'parameters.pkl' not in contents:
+     #   dirs = glob.glob(os.path.join(os.path.dirname(__file__), f"../runs/{label}/*"))
+      #  logdir = sorted(dirs)[0]
+    #else:
+    logdir = label
 
     #dirs = glob.glob(f"../runs/{label}/*")
     #logdir = sorted(dirs)[0]
@@ -111,8 +113,8 @@ def load_env(label, headless=False):
 
     from go1_gym.envs.wrappers.history_wrapper import HistoryWrapper
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=policy,
-        random_init=False)
+    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg, torque_policy=torque_policy,
+        random_init=random_init)
     env = HistoryWrapper(env)
 
     # load policy
@@ -132,11 +134,11 @@ def play_go1(headless=True):
     import os
 
     #label = "gait-conditioned-agility/pretrain-v0/train"
-    label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-11-13/train/234829.495325"
+    
     #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-18/train/160905.142900"
     #label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-10-17/train/225011.109728"
     
-    env, vel_policy = load_env(label, headless)
+    env, vel_policy = load_env(label, headless, random_init)
 
     num_eval_steps = 750
 
