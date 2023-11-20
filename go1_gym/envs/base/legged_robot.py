@@ -313,44 +313,65 @@ class LeggedRobot(BaseTask):
                                                      gymtorch.unwrap_tensor(robot_actor_idxs_int32[env_ids_long]), len(env_ids_long))
 
     def compute_reward(self):
-        """ Compute rewards
-            Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
-            adds each terms to the episode sums and to the total reward
         """
+        Compute rewards
+        Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
+        adds each term to the episode sums and to the total reward
+        """
+
+        # Calculate the position of the robot relative to the environment origin
         x_pos = self.root_states[self.robot_actor_idxs, 0] - self.env_origins[:, 0]
         y_pos = self.root_states[self.robot_actor_idxs, 1] - self.env_origins[:, 1]
 
+        # Identify the indices where the robot has succeeded (y position is greater than or equal to 1.5)
         success_indices = torch.where(y_pos >= 1.5)
 
+        # Initialize reward buffers to zero
+        self.rew_buf[:] = 0.0
+        self.rew_buf_pos[:] = 0.0
+        self.rew_buf_neg[:] = 0.0
 
-        # static_indices = np.where(np.abs(norm_velocities) < 0.01)
-
-        self.rew_buf[:] = 0.
-        self.rew_buf_pos[:] = 0.
-        self.rew_buf_neg[:] = 0.
-
+        # Initialize a reward for reaching the goal, initially zero for all
         goal_reward = torch.zeros_like(y_pos).to(self.device)
 
-        goal_reward[success_indices] = 1000
+        # Assign a high reward (1000) for successful positions
+        goal_reward[success_indices] = 10
 
+        # Calculate the distance to the goal and its associated negative reward
         goal_dist = torch.abs(1.5 - y_pos)
+        goal_dist_rew = -goal_dist*3
 
-        goal_dist_rew = -goal_dist
+        # Set the goal distance reward to zero for successful positions
         goal_dist_rew[success_indices] = 0
 
-        wall_rew = -torch.zeros_like(x_pos).to(self.device)
+        # Define wall boundaries (adjust these values according to your environment)
+        left_wall_boundary = -1.0
+        right_wall_boundary = 1.0
 
-        wall_rew[success_indices] = 0
+        # Calculate the distance to the nearest wall and penalize based on proximity
+        dist_to_left_wall = torch.abs(x_pos - left_wall_boundary)
+        dist_to_right_wall = torch.abs(right_wall_boundary - x_pos)
+        min_dist_to_wall = torch.min(dist_to_left_wall, dist_to_right_wall)
+        #print("Min dist to wall:", min_dist_to_wall)
+        wall_penalty = -torch.exp(min_dist_to_wall)
+        #print("Wall penalty: ", wall_penalty)# Exponential penalty for getting closer to the wall
 
-        rewards = goal_dist_rew + wall_rew
+        # Set the wall reward to zero for successful positions
+        wall_penalty[success_indices] = 0
+        #print("goal dist reward: ", goal_dist_rew)
+        # Combine the rewards from goal distance, walls, and wall penalties
+        rewards = goal_dist_rew + wall_penalty
+
+        # For successful positions, overwrite with the high goal reward
         rewards[success_indices] = goal_reward[success_indices]
-        
+
+        # Store the individual components of the reward for potential debugging
         self.y_dist_rew = goal_dist_rew.to(self.device)
-        self.closest_wall_dist_rew = wall_rew.to(self.device)
+        self.closest_wall_dist_rew = wall_penalty.to(self.device)
         self.goal_rew = goal_reward.to(self.device)
 
+        # Update the main reward buffer with the computed rewards
         self.rew_buf = rewards
-
         # for i in range(len(self.reward_functions)):
         #     name = self.reward_names[i]
         #     rew = self.reward_functions[i]() * self.reward_scales[name]
@@ -937,11 +958,8 @@ class LeggedRobot(BaseTask):
         robot_env_ids_int32 = robot_env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim, gymtorch.unwrap_tensor(self.root_states),gymtorch.unwrap_tensor(robot_env_ids_int32), len(robot_env_ids_int32))
 
-        if cfg.env.record_video and 0 in env_ids:
-            if self.complete_video_frames is None:
-                self.complete_video_frames = []
-            else:
-                self.complete_video_frames = self.video_frames[:]
+        if self.record_now and 0 in env_ids:
+            self.complete_video_frames = self.video_frames.copy()
             self.video_frames = []
 
         if cfg.env.record_video and self.eval_cfg is not None and self.num_train_envs in env_ids:
@@ -1562,7 +1580,7 @@ class LeggedRobot(BaseTask):
                 self.video_frames_eval.append(self.video_frame_eval)
 
     def start_recording(self):
-        self.complete_video_frames = None
+        self.complete_video_frames = []
         self.record_now = True
 
     def start_recording_eval(self):
@@ -1575,7 +1593,7 @@ class LeggedRobot(BaseTask):
         self.record_now = False
 
     def pause_recording_eval(self):
-        self.complete_video_frames_eval = []
+        #self.complete_video_frames_eval = []
         self.video_frames_eval = []
         self.record_eval_now = False
 

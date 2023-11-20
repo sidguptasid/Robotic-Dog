@@ -156,6 +156,12 @@ def play_go1(headless=True):
 
         if done:
             print('Success!')
+    video_frames = env.complete_video_frames
+    if len(video_frames) == 0:
+        video_frames = env.video_frames
+    if len(video_frames) == 0:
+        video_frames = env.env.video_frames
+    logger.save_video(env.video_frames, "videos/plan1.mp4",fps=1/env.dt)
 
 if __name__ == '__main__':
     # to see the environment rendering, set headless=False
