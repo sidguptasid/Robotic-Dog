@@ -15,7 +15,7 @@ from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
 
 from tqdm import tqdm
 
-label = "/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-11-18/train/154651.039712"
+label = "/common/home/ab2465/CS562/walk-these-ways/runs/gait-conditioned-agility/2023-11-18/train/234106.567882"
 random_init=False
 def load_policy(logdir):
     body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
@@ -65,7 +65,7 @@ def load_env(label, headless, random_init):
     #dirs = glob.glob(f"../runs/{label}/*")
     #logdir = sorted(dirs)[0]
     policy = load_velocity_policy(logdir)
-    torque_policy = load_policy('/common/home/sdg141/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
+    torque_policy = load_policy('/common/home/ab2465/CS562/walk-these-ways/runs/gait-conditioned-agility/pretrain-v0/train/025417.456545')
 
     with open(os.path.join(logdir, "parameters.pkl"), 'rb') as file:
         pkl_cfg = pkl.load(file)

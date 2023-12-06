@@ -1509,6 +1509,24 @@ class LeggedRobot(BaseTask):
             shape_props4[0].compliance = 0.5
             self.gym.set_actor_rigid_shape_properties(env_handle, box_handle4, shape_props4)
 
+            # box/obstacle
+            obstacle_length = torch.rand(1).to(self.device) * (1 - 0.3) + 0.3
+            obstacle_width = 0.4
+            obstacle_height = 1.0
+            obstacle_y_pos = torch.rand(1).to(self.device) * (0.5 + 1.2) - 1.2
+            obstacle_x_pos = (torch.rand(1).to(self.device) * ((1.0 - (obstacle_length / 2)) * 2)) - (1.0 - (obstacle_length / 2))
+            asset_obstacle = self.gym.create_box(self.sim, obstacle_length, obstacle_width, obstacle_height, asset_options)
+            obstacle_pose = gymapi.Transform()
+            obstacle_pose.p = gymapi.Vec3(*(self.env_origins[i,:2] + torch.Tensor([obstacle_x_pos, obstacle_y_pos]).to(self.device)), 1/2)
+            obstacle_pose.r = gymapi.Quat.from_euler_zyx(0, 0, 0)
+            obstacle_handle = self.gym.create_actor(env_handle, asset_obstacle, obstacle_pose, "obstacle", i, 0)
+            shape_props5 = self.gym.get_actor_rigid_shape_properties(env_handle, obstacle_handle)
+            shape_props5[0].restitution = 1
+            shape_props5[0].compliance = 0.5
+            #for prop in shape_props:
+            #    prop.color = gymapi.Vec3(1, 0, 0)  # RGB for Red
+            self.gym.set_actor_rigid_shape_properties(env_handle, obstacle_handle, shape_props5)
+
             #--actor 4 ends
 
         print("Actors")
