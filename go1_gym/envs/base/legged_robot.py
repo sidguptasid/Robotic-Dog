@@ -34,9 +34,6 @@ class LeggedRobot(BaseTask):
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
         """
-        self.obstacle_dimensions = torch.zeros((self.num_envs, 2), device=self.device) # Length, width for each environment
-        self.obstacle_positions = torch.zeros((self.num_envs, 2), device=self.device) # X, Y positions for each environment
-        
         self.cfg = cfg
         self.eval_cfg = eval_cfg
         self.sim_params = sim_params
@@ -321,7 +318,7 @@ class LeggedRobot(BaseTask):
         Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
         adds each term to the episode sums and to the total reward
         """
-
+        
         # Calculate the position of the robot relative to the environment origin
         x_pos = self.root_states[self.robot_actor_idxs, 0] - self.env_origins[:, 0]
         y_pos = self.root_states[self.robot_actor_idxs, 1] - self.env_origins[:, 1]

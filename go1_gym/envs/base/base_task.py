@@ -58,6 +58,10 @@ class BaseTask(gym.Env):
         torch._C._jit_set_profiling_mode(False)
         torch._C._jit_set_profiling_executor(False)
 
+        # allocate obstacle dimensions and positions
+        self.obstacle_dimensions = torch.zeros((self.num_envs, 2), device=self.device) # Length, width for each environment
+        self.obstacle_positions = torch.zeros((self.num_envs, 2), device=self.device) # X, Y positions for each environment
+
         # allocate buffers
         self.obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float)
         self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
