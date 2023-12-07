@@ -34,6 +34,9 @@ class LeggedRobot(BaseTask):
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
         """
+        self.obstacle_dimensions = torch.zeros((self.num_envs, 2), device=self.device) # Length, width for each environment
+        self.obstacle_positions = torch.zeros((self.num_envs, 2), device=self.device) # X, Y positions for each environment
+        
         self.cfg = cfg
         self.eval_cfg = eval_cfg
         self.sim_params = sim_params
@@ -166,10 +169,10 @@ class LeggedRobot(BaseTask):
 
     def convert_vel_to_action(self, vel, obs_hist, env_ids=None):
         if self.random_init:
-            clipped_vel = torch.clip(vel.to(self.device), min=torch.tensor([-3, -3, -np.pi]).to(self.device), max=torch.tensor([3, 3, np.pi]).to(self.device))
+            clipped_vel = torch.clip(vel.to(self.device), min=torch.tensor([-1, -1, -np.pi]).to(self.device), max=torch.tensor([1, 1, np.pi]).to(self.device))
             vel = clipped_vel
         else:
-            vel = torch.clip(vel.to(self.device), min=torch.tensor([-2, -2, -0.5]).to(self.device), max=torch.tensor([2, 2, 0.5]).to(self.device))
+            vel = torch.clip(vel.to(self.device), min=torch.tensor([-1, -1, -0.5]).to(self.device), max=torch.tensor([1, 1, 0.5]).to(self.device))
         if env_ids is None:
             env_ids = [0]
         if len(env_ids) == 0:
@@ -1526,6 +1529,8 @@ class LeggedRobot(BaseTask):
             #for prop in shape_props:
             #    prop.color = gymapi.Vec3(1, 0, 0)  # RGB for Red
             self.gym.set_actor_rigid_shape_properties(env_handle, obstacle_handle, shape_props5)
+            self.obstacle_dimensions[i] = torch.tensor([obstacle_length, obstacle_width])
+            self.obstacle_positions[i] = torch.tensor([obstacle_x_pos, obstacle_y_pos])
 
             #--actor 4 ends
 
