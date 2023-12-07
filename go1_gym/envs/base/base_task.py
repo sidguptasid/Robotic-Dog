@@ -77,6 +77,7 @@ class BaseTask(gym.Env):
         
         self.y_dist_rew = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.closest_wall_dist_rew = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        self.obstacle_rew = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.goal_rew = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         # self.num_privileged_obs = self.num_obs
 

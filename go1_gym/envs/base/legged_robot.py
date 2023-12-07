@@ -132,6 +132,7 @@ class LeggedRobot(BaseTask):
         self.extras['rew_buf'] = self.rew_buf.clone()
         self.extras['y_dist_rew'] = self.y_dist_rew.clone()
         self.extras['closest_wall_dist_rew'] = self.closest_wall_dist_rew.clone()
+        self.extras['obstacle_rew'] = self.obstacle_rew.clone()
         self.extras['goal_rew'] = self.goal_rew.clone()
         self.reset_idx(env_ids)
         self.compute_observations()
@@ -216,6 +217,7 @@ class LeggedRobot(BaseTask):
         
         self.y_dist_rew[env_ids] = 0.
         self.closest_wall_dist_rew[env_ids] = 0.
+        self.obstacle_rew[env_ids] = 0.
         self.goal_rew[env_ids] = 0.
 
         # reset robot states
@@ -359,8 +361,30 @@ class LeggedRobot(BaseTask):
         # Set the wall reward to zero for successful positions
         wall_penalty[success_indices] = 0
         #print("goal dist reward: ", goal_dist_rew)
-        # Combine the rewards from goal distance, walls, and wall penalties
-        rewards = goal_dist_rew + wall_penalty
+
+        # Obstacle dimensions and positions for all environments
+        obstacle_center_x = self.obstacle_positions[:, 0]
+        obstacle_center_y = self.obstacle_positions[:, 1]
+        obstacle_length = self.obstacle_dimensions[:, 0]
+        obstacle_width = self.obstacle_dimensions[:, 1]
+
+        # Calculate bounds of the obstacle
+        obstacle_left_bound = obstacle_center_y - obstacle_width / 2
+        obstacle_right_bound = obstacle_center_y + obstacle_width / 2
+        obstacle_bottom_bound = obstacle_center_x + obstacle_length / 2
+        obstacle_top_bound = obstacle_center_x - obstacle_length / 2
+
+        # Determine if the robot is within the bounds of the obstacle
+        in_obstacle_y = (y_pos >= (obstacle_left_bound-0.5)) & (y_pos <= obstacle_right_bound)
+        in_obstacle_x = (x_pos <= obstacle_bottom_bound) & (x_pos >= obstacle_top_bound)
+        in_obstacle = in_obstacle_x & in_obstacle_y
+
+        # Apply penalty for collision with the obstacle
+        obstacle_penalty = torch.zeros_like(x_pos).to(self.device)
+        obstacle_penalty[in_obstacle] = -5  # Set the penalty value as needed
+
+        # Combine the rewards from goal distance, walls, wall penalties, and obstacle penalties
+        rewards = goal_dist_rew + wall_penalty + obstacle_penalty
 
         # For successful positions, overwrite with the high goal reward
         rewards[success_indices] = goal_reward[success_indices]
@@ -368,6 +392,7 @@ class LeggedRobot(BaseTask):
         # Store the individual components of the reward for potential debugging
         self.y_dist_rew = goal_dist_rew.to(self.device)
         self.closest_wall_dist_rew = wall_penalty.to(self.device)
+        self.obstacle_rew = obstacle_penalty.to(self.device)
         self.goal_rew = goal_reward.to(self.device)
 
         # Update the main reward buffer with the computed rewards

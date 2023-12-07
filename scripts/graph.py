@@ -46,6 +46,7 @@ full_path = path + file
 episode_reward = []
 goal_distance_rew = []
 wall_dist_rew = []
+obstacle_rew = []
 goal_rew = []
 
 with open(full_path, "r") as file:
@@ -57,7 +58,8 @@ with open(full_path, "r") as file:
         episode_reward.append(float(line[1]))
         goal_distance_rew.append(float(line[2]))
         wall_dist_rew.append(float(line[3]))
-        goal_rew.append(float(line[4]))
+        obstacle_rew.append(float(line[4]))
+        goal_rew.append(float(line[5]))
 
 # Create a range for the x-axis based on the number of entries
 x_range = range(len(episode_reward))
@@ -66,6 +68,7 @@ x_range = range(len(episode_reward))
 plt.plot(x_range, episode_reward, label="Episode Reward")
 plt.plot(x_range, goal_distance_rew, label="Goal Distance Rew")
 plt.plot(x_range, wall_dist_rew, label="Wall Dist Rew")
+plt.plot(x_range, obstacle_rew, label="Obstacle Rew")
 plt.plot(x_range, goal_rew, label="Goal Rew")
 
 # Adding labels, title, and grid
