@@ -185,6 +185,9 @@ class Runner:
             num_traj = self.env.num_envs
             num_new_traj = 0
             frames = None
+
+            failures = torch.zeros(self.env.num_envs, dtype=torch.bool, device=self.device)
+
             with torch.inference_mode():
                 dones = None
                 for i in range(self.num_steps_per_env):
