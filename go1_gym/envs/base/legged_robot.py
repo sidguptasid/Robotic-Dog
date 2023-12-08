@@ -386,7 +386,7 @@ class LeggedRobot(BaseTask):
 
         # Determine if the robot is within the bounds of the obstacle
         in_obstacle_y = (y_pos >= (obstacle_left_bound-0.5)) & (y_pos <= obstacle_right_bound)
-        in_obstacle_x = (x_pos <= obstacle_bottom_bound) & (x_pos >= obstacle_top_bound)
+        in_obstacle_x = (x_pos >= obstacle_bottom_bound) & (x_pos <= obstacle_top_bound)
         in_obstacle = in_obstacle_x & in_obstacle_y
 
         # Apply penalty for collision with the obstacle
