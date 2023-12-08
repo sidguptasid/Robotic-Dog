@@ -358,10 +358,14 @@ class LeggedRobot(BaseTask):
         # wall_penalty = -torch.exp(min_dist_to_wall)
         #print("Wall penalty: ", wall_penalty)# Exponential penalty for getting closer to the wall
         wallCollision = torch.zeros_like(y_pos).to(self.device)
-        leftWallCollision = torch.where(y_pos <= self.env_origins[:, 1] - 1.7)
-        downWallCollision = torch.where(x_pos <= self.env_origins[:, 0] - 0.7)
-        upWallCollision = torch.where(x_pos >= self.env_origins[:, 0] + 0.7)
-        collisionIndices = leftWallCollision | downWallCollision | upWallCollision
+        # Combine the conditions using logical OR
+        combined_condition = (y_pos <= (self.env_origins[:, 1] - 1.8)) | \
+                     (x_pos <= (self.env_origins[:, 0] - 0.8)) | \
+                     (x_pos >= (self.env_origins[:, 0] + 0.8))
+
+# Use torch.where to get indices based on the combined condition
+        collisionIndices = torch.where(combined_condition)
+
         wallCollision[collisionIndices] = -5
         wall_penalty = wallCollision
         # Set the wall reward to zero for successful positions
