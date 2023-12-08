@@ -168,25 +168,27 @@ class Runner:
         obstacle_rews_buf = []
         ep_goal_rews_buf = []
         num_traj_buf = []
+        max_success_rate = 0
+        last_max_success_rate_it = 0
 
         model_root_path = os.path.join(logger.root, logger.prefix)
         for it in range(self.current_learning_iteration, tot_iter):
             start = time.time()
             # Rollout
             
-            tot_success = 0
+            num_success = 0
             tot_rew = 0
             tot_y_dist_rew = 0
             tot_wall_dist_rew = 0
             tot_obstacle_rew = 0
             tot_goal_rew = 0
             num_traj = self.env.num_envs
-            prev_dones = 0
+            num_new_traj = 0
             frames = None
             with torch.inference_mode():
                 dones = None
                 for i in range(self.num_steps_per_env):
-                    num_traj += prev_dones
+                    num_traj += num_new_traj
                     if self.isTorque:
                         actions_train = self.alg.act(obs[:num_train_envs], privileged_obs[:num_train_envs],
                                                     obs_history[:num_train_envs])
@@ -201,12 +203,13 @@ class Runner:
                     ret = self.env.step(torch.cat((actions_train, actions_eval), dim=0))
                     obs_dict, rewards, dones, infos = ret
 
-                    num_success = torch.sum(dones.to(dtype=torch.float))
-                    tot_success += num_success
-                    prev_dones = num_success
-
+                    failures = failures | dones
                     if it == self.last_recording_it and dones[0] and frames is None:
                         frames = self.env.get_complete_frames() or self.env.video_frames
+
+                    new_success = torch.sum(dones.to(dtype=torch.float))
+                    num_success += new_success
+                    num_new_traj = new_success
 
                     tot_rew += infos['rew_buf'].sum()
                     tot_y_dist_rew += infos['y_dist_rew'].sum()
@@ -261,13 +264,14 @@ class Runner:
                     if 'curriculum/distribution' in infos:
                         distribution = infos['curriculum/distribution']
 
-                env_dones = 100 * tot_success / num_traj
+                num_failures = torch.logical_not(failures).to(dtype=torch.float).sum()
+                success_rate = 100 * num_success / (num_success + num_failures)
                 ep_rewards_mean = tot_rew / num_traj
                 ep_y_dist_rews_mean = tot_y_dist_rew / num_traj
                 ep_wall_dist_rews_mean = tot_wall_dist_rew / num_traj
                 ep_obstacle_rew_mean = tot_obstacle_rew / num_traj
                 ep_goal_rews_mean = tot_goal_rew / num_traj
-                total_dones.append(env_dones)
+                total_dones.append(success_rate)
                 total_rews_buf.append(ep_rewards_mean)
                 y_dist_rews_buf.append(ep_y_dist_rews_mean)
                 wall_dist_rews_buf.append(ep_wall_dist_rews_mean)
@@ -288,7 +292,7 @@ class Runner:
 
                 self.env.reset()
 
-            print(f'\n\nSuccess Rates: {env_dones}%')
+            print(f'\n\nSuccess Rates: {success_rate}%')
             print(f'Reward Means: {ep_rewards_mean}')
             print(f'Y Dist Rews: {ep_y_dist_rews_mean}')
             print(f'Wall Dist Rews: {ep_wall_dist_rews_mean}')
@@ -302,8 +306,8 @@ class Runner:
 
             if (it + 1) % 30:
                 with open(os.path.join(model_root_path, 'success_rate.txt'), 'a') as f:
-                    for env_dones, total_rew, y_dist_rew, wall_dist_rew, obstacle_rew, ep_goal_rew, num_traj in zip(total_dones, total_rews_buf, y_dist_rews_buf, wall_dist_rews_buf, obstacle_rews_buf, ep_goal_rews_buf, num_traj_buf):
-                        f.write(f'{env_dones},\t\t{total_rew},\t\t{y_dist_rew},\t\t{wall_dist_rew},\t\t{obstacle_rew}, \t\t{ep_goal_rew}, \t\t{num_traj}\n')
+                    for success_rate, total_rew, y_dist_rew, wall_dist_rew, obstacle_rew, ep_goal_rew, num_traj in zip(total_dones, total_rews_buf, y_dist_rews_buf, wall_dist_rews_buf, obstacle_rews_buf, ep_goal_rews_buf, num_traj_buf):
+                        f.write(f'{success_rate},\t\t{total_rew},\t\t{y_dist_rew},\t\t{wall_dist_rew},\t\t{obstacle_rew}, \t\t{ep_goal_rew}, \t\t{num_traj}\n')
                 total_dones = []
                 total_rews_buf = []
                 y_dist_rews_buf = []
