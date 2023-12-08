@@ -10,7 +10,7 @@ class Cfg(PrefixProto, cli=False):
         num_scalar_observations = 42
         # if not None a privilige_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise
         num_privileged_obs = 18
-        num_obs_vel = 8
+        num_obs_vel = 9
         privileged_future_horizon = 1
         num_actions = 12
         num_actions_vel = 3

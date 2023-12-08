@@ -621,10 +621,13 @@ class LeggedRobot(BaseTask):
         base_ang_vel_x = self.base_ang_vel[:, 0]
         base_ang_vel_y = self.base_ang_vel[:, 1]
         base_ang_vel_z = self.base_ang_vel[:, 2]
+        obstacle_length = self.obs_lengths
+        obstacle_pos_x = self.obs_x_positions
+        obstacle_pos_y = self.obs_y_positions
         orientations = self.base_quat.cpu()
         yaw_orientations = torch.tensor(R.from_quat(orientations).as_euler('zyx')[:, 0]).to(self.device)
         # build obs_vel, input for velocity network
-        self.obs_vel = torch.vstack((base_pos_x, base_pos_y, yaw_orientations, base_lin_vel_x, base_lin_vel_y, base_ang_vel_x, base_ang_vel_y, base_ang_vel_z)).T
+        self.obs_vel = torch.vstack((base_pos_x, base_pos_y, yaw_orientations, base_lin_vel_x, base_lin_vel_y, base_ang_vel_x, obstacle_pos_x, obstacle_pos_y, obstacle_length)).T
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -1475,6 +1478,9 @@ class LeggedRobot(BaseTask):
         self._init_custom_buffers__()
         self._call_train_eval(self._randomize_rigid_body_props, torch.arange(self.num_envs, device=self.device))
         self._randomize_gravity()
+        self.obs_x_positions = []
+        self.obs_y_positions = []
+        self.obs_lengths = []
 
         for i in range(self.num_envs):
             # create env instance
@@ -1560,8 +1566,14 @@ class LeggedRobot(BaseTask):
             self.obstacle_dimensions[i] = torch.tensor([obstacle_length, obstacle_width])
             self.obstacle_positions[i] = torch.tensor([obstacle_x_pos, obstacle_y_pos])
 
-            #--actor 4 ends
+            self.obs_y_positions.append(obstacle_y_pos)
+            self.obs_x_positions.append(obstacle_x_pos)
+            self.obs_lengths.append(obstacle_length)
 
+            #--actor 4 ends
+        self.obs_lengths = torch.Tensor(self.obs_lengths).to(self.device)
+        self.obs_x_positions = torch.Tensor(self.obs_x_positions).to(self.device)
+        self.obs_y_positions = torch.Tensor(self.obs_y_positions).to(self.device)
         print("Actors")
         print(self.gym.get_sim_actor_count(self.sim))
         self.robot_actor_idxs = torch.Tensor(self.robot_actor_idxs).to(device=self.device,dtype=torch.long)
