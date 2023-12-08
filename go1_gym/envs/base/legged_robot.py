@@ -351,13 +351,19 @@ class LeggedRobot(BaseTask):
         right_wall_boundary = 1.0
 
         # Calculate the distance to the nearest wall and penalize based on proximity
-        dist_to_left_wall = torch.abs(x_pos - left_wall_boundary)
-        dist_to_right_wall = torch.abs(right_wall_boundary - x_pos)
-        min_dist_to_wall = torch.min(dist_to_left_wall, dist_to_right_wall)
-        #print("Min dist to wall:", min_dist_to_wall)
-        wall_penalty = -torch.exp(min_dist_to_wall)
+        # dist_to_left_wall = torch.abs(x_pos - left_wall_boundary)
+        # dist_to_right_wall = torch.abs(right_wall_boundary - x_pos)
+        # min_dist_to_wall = torch.min(dist_to_left_wall, dist_to_right_wall)
+        # #print("Min dist to wall:", min_dist_to_wall)
+        # wall_penalty = -torch.exp(min_dist_to_wall)
         #print("Wall penalty: ", wall_penalty)# Exponential penalty for getting closer to the wall
-
+        wallCollision = torch.zeros_like(y_pos).to(self.device)
+        leftWallCollision = torch.where(y_pos <= self.env_origins[:, 1] - 1.7)
+        downWallCollision = torch.where(x_pos <= self.env_origins[:, 0] - 0.7)
+        upWallCollision = torch.where(x_pos >= self.env_origins[:, 0] + 0.7)
+        collisionIndices = leftWallCollision | downWallCollision | upWallCollision
+        wallCollision[collisionIndices] = -5
+        wall_penalty = wallCollision
         # Set the wall reward to zero for successful positions
         wall_penalty[success_indices] = 0
         #print("goal dist reward: ", goal_dist_rew)
