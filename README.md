@@ -57,6 +57,8 @@ We add an immovable obstacle to the existing environment and train the policy to
 
 #### Diagram of the environment with the obstacle
 <img width="516" alt="Room" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/e24f2a9e-3746-4e48-83cc-3e660505039d">
+
+
 ### Results
 
 
