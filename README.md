@@ -11,7 +11,10 @@ Phase 1 aims to train a velocity-conditioned neural network policy enabling the 
 The phase begins with setting up the Isaac Gym simulator and cloning the 'walk-these-ways' repository. The main task is to train the robot to follow commanded velocities within a specified range, familiarizing participants with the simulator, code base, and the robot's functionality.
 
 ### Results
-- [plan.mp4](Assets/phase1.mp4)
+<video width="640" height="360" controls>
+  <source src="Assets/phase1.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 ## Phase 2: Robot Navigation within Walls
 ### Overview
