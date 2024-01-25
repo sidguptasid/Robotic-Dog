@@ -14,8 +14,8 @@ The phase begins with setting up the Isaac Gym simulator and then cloning the 'w
 
 ### Results
 
-[![Thumbnail for Plan] <img width="649" alt="Thumbnail for Plan" src="https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4">](https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4)
 
+[![Thumbnail for Plan] <img width="649" alt="Thumbnail for Plan" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/425aac2b-b737-4eb9-988c-9eebe89ee1bc">](https://github.com/sidguptasid/walk-these-ways/assets/132853979/425aac2b-b737-4eb9-988c-9eebe89ee1bc)
 
 ## Phase 2: Robot Navigation within Walls
 
@@ -28,14 +28,21 @@ The task involves setting up an environment with walls, implementing a Navigator
 
 ### Results
 
-#### Dog walking towards the goal line (Fixed spawning)
-[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4">](https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4)
 
-#### Dog walking towards the goal line (Backward - Random spawning)
-[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4">](https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4)
 
-#### Dog realigning itself towards the goal line (Forward - Random spawning)
-[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4">](https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4)
+
+
+
+
+#### Dog walking towards the goal line (Fixed Initialization)
+[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/8fed88e4-1afd-4b2a-bdb6-79dfbd03eccc">](https://github.com/sidguptasid/walk-these-ways/assets/132853979/8fed88e4-1afd-4b2a-bdb6-79dfbd03eccc)
+
+#### Dog walking towards the goal line (Random Initialization)
+[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/2dc4f819-21af-48f6-9cb7-752c0891fef9">](https://github.com/sidguptasid/walk-these-ways/assets/132853979/2dc4f819-21af-48f6-9cb7-752c0891fef9)
+
+#### Dog walking towards the goal line (Random Initialization)
+[![Thumbnail for Plan] <img width="649" alt="Thumbnail for 80" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/3ef63dde-eeb9-4f46-81a8-128f67f66034">](https://github.com/sidguptasid/walk-these-ways/assets/132853979/3ef63dde-eeb9-4f46-81a8-128f67f66034)
+
 
 
 
@@ -49,17 +56,18 @@ We add an immovable obstacle to the existing environment and train the policy to
 
 
 #### Diagram of the environment with the obstacle
-<img width="516" alt="Box with Obstacle Environment" src="https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4">
-
+<img width="516" alt="Room" src="https://github.com/sidguptasid/walk-these-ways/assets/132853979/e24f2a9e-3746-4e48-83cc-3e660505039d">
 ### Results
 
 
-https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4
+
+
+https://github.com/sidguptasid/walk-these-ways/assets/132853979/fbf8e07c-d012-4234-8244-b28362e64345
 
 
 
-https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4
+https://github.com/sidguptasid/walk-these-ways/assets/132853979/461bc5c3-31e4-445c-8c45-6836a54497f5
 
 
 
-https://github.com/sidguptasid/walk-these-ways/blob/master/Assets/phase1.mp4
+https://github.com/sidguptasid/walk-these-ways/assets/132853979/e8934703-8e3d-438f-8dde-a8257ea397d0
